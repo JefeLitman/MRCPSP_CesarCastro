@@ -1,2 +1,2 @@
-#jobs,time_horizon,init_random_value,rel_date,duedate,tardcost,MPM-Time,renewable_resources,nonrenewable_resources,doubly_constrained,R1_available,R2_available,NR1_available,NR2_available
+#jobs,time_horizon,init_random_value,rel_date,duedate,tardcost,MPM-Time,renewable_resources,nonrenewable_resources,doubly_constrained,R1_available,R2_available,N1_available,N2_available
 32,260,1242542187,0,32,16,32,2,2,0,18,17,91,78
