@@ -1,16 +1,18 @@
 """This file contains code to load the csv files for the MRCPSP problem
 Created by: Edgar RP
-Version: 1.0
+Version: 1.0.1
 """
 
 import os
 import numpy as np
 import pandas as pd
 
-def load_csv(example_path):
+def load_project(example_path):
   """This function loads the csv files contained in the example path (must contain only 3 csv with names "project_params", 
   "jobs_precedences" and "jobs_durations-modes"). Also checks the data integrity of the files and returns a dictionary of 
   the project with all the information contained in the csv files.
+  Args:
+    example_path (String): A string with the folder path that contains only 3 csv files.
   """
   resources_key_acronim = [("renewable_resources", "R"), ("nonrenewable_resources", "N"), ("doubly_constrained", "D")]
 
@@ -71,9 +73,6 @@ def load_csv(example_path):
     "renewable_resources_total": tuple(resources["renewable_resources"]),
     "nonrenewable_resources_total": tuple(resources["nonrenewable_resources"]),
     "doubly_constrained_total": tuple(resources["doubly_constrained"]),
-    "renewable_resources_available": np.r_[resources["renewable_resources"]],
-    "nonrenewable_resources_available": np.r_[resources["nonrenewable_resources"]],
-    "doubly_constrained_available": np.r_[resources["doubly_constrained"]],
     "jobs": []
   }
 
