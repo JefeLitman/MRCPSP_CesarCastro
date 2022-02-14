@@ -18,7 +18,7 @@ class project_schedule():
             beta_generator (np.random.beta): Instance of numpy beta random value 
             generator to get random values.
         """
-        #Parameters for the scheself.__dule object
+        #Parameters for the object
         self.schedule = []
         self.jobs_to_do = []
         self.jobs_done = []
