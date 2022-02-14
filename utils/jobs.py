@@ -1,7 +1,7 @@
 """This file contains code to process the jobs dictionary in the project
 and schedule objects.
 Created by: Edgar RP
-Version: 1.0
+Version: 1.0.1
 Job Dict Structure:
     {
         "id": Integer
@@ -66,7 +66,7 @@ def get_new_job_base_duration(duration, beta_generator):
     new_duration = duration
     if beta_generator() >= 0.5:
         #Duration modified
-        if beta_generator() > 0.5 or duration == 1:
+        if beta_generator() > 0.5:
             #Duration increased
             new_duration *= 1 + beta_generator()
         else:
