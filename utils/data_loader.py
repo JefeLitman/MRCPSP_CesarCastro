@@ -1,6 +1,6 @@
 """This file contains code to load the csv files for the MRCPSP problem
 Created by: Edgar RP
-Version: 1.0.1
+Version: 1.0.2
 """
 
 import os
@@ -94,7 +94,7 @@ def load_project(example_path):
     job = {
       "id": duration_modes.loc[index, "jobnr"],
       "mode": duration_modes.loc[index, "mode"],
-      "duration": duration_modes.loc[index, "duration"],
+      "base_duration": duration_modes.loc[index, "duration"],
       "successors": successors,
       "renewable_resources_use": np.r_[resources["renewable_resources"]],
       "nonrenewable_resources_use": np.r_[resources["nonrenewable_resources"]],
