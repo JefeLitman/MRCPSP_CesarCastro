@@ -1,7 +1,7 @@
 """This file contain the class that execute and do the genetic algorithm of 
 the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 0.0.1
+Version: 0.0.2
 """
 
 import numpy as np
@@ -21,6 +21,13 @@ class genetica():
 
         self.reset()
         self.crear_poblacion(dim_mapa)
+        self.__set_jobs_durations__(project["jobs"], beta_generator)
+        self.__set_jobs_durations_risks__(
+            project["jobs"], 
+            n_jobs_risks, 
+            risks_per_job, 
+            beta_generator
+        )
 
     def reset(self):
         self.iteracion = 0
@@ -158,3 +165,38 @@ class genetica():
             for j in range(variable.shape[1]):
                 if(np.random.random() < self.radio_mutacion):
                     variable[i,j] = variable[i,j] * np.random.random()
+
+    def __set_jobs_durations__(self, jobs, beta_generator):
+        """This function stablish the new base duration for all the jobs 
+        excluding the initial and final jobs. Return nothing
+        Args:
+            jobs (List[Dict]): A list of dictionary of each job.
+            beta_generator (np.random.beta): Instance of numpy beta random value 
+            generator to get random values.
+        """
+        for job in jobs:
+            if job["id"] not in [self.initial_job, self.final_job]:
+                job["init_random_duration"] = uj.get_new_job_base_duration(job["base_duration"], beta_generator)
+
+    def __set_jobs_durations_risks__(self, jobs, n_jobs, risks_per, beta_generator):
+        """This function stablish the new total durations with risk
+        for all the jobs excluding the initial and final jobs.
+        Args:
+            jobs (List[Dict]): A list of dictionary of each job.
+            n_jobs (Integer): Quantity of jobs which will have risks.
+            risks_per (Tuple): Tuple of the percentages of happening that risk and
+            its length is the quantity of risks.
+            beta_generator (np.random.beta): Instance of numpy beta random value 
+            generator to get random values.
+        """
+        jobs_modified = []
+        while len(jobs_modified) < n_jobs:
+            for job in jobs:
+                if job["id"] not in [self.initial_job, self.final_job]:
+                    duration = job["init_random_duration"]
+                    risks = uj.get_job_risks(duration, risks_per, beta_generator)
+                    if risks["total_duration"] != duration:
+                        for key in risks:
+                            job[key] = risks[key]
+                    if job["id"] not in jobs_modified:
+                        jobs_modified.append(job["id"])
