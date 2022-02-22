@@ -1,7 +1,7 @@
 """This file contains code to process the jobs dictionary in the project
 and schedule objects.
 Created by: Edgar RP
-Version: 1.1
+Version: 1.2
 Job Dict Structure:
     {
         "id": Integer
@@ -135,13 +135,15 @@ def get_job_risks(base_duration, risks_per_job, beta_generator):
     """
     new_duration = base_duration
     risks = {}
+    percentages = []
     for i, p in enumerate(risks_per_job):
         risk = "risk_{}".format(i+1)
         if beta_generator() < p:
             percentage = beta_generator()
             risks[risk] = percentage
-            new_duration *= 1 + percentage
+            percentages.append(percentage)
         else:
             risks[risk] = None
+    new_duration *= 1 + np.sum(percentages)
     risks["total_duration"] = np.ceil(new_duration)
     return risks
