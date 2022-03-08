@@ -1,7 +1,6 @@
-"""This file contains code to process the jobs dictionary in the project
-and schedule objects.
+"""This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.2
+Version: 1.2.1
 Job Dict Structure:
     {
         "id": Integer
@@ -12,6 +11,8 @@ Job Dict Structure:
         "nonrenewable_resources_use": np.Array[Int]
         "doubly_constrained_use": np.Array[Int],
         "init_random_duration": Integer,
+        "normal_dist_mean": Float,
+        "normal_dist_std": Float,
         "total_duration": Integer,
         "risk_1": Float,
         "risk_2": Float,
@@ -23,9 +24,7 @@ Job Dict Structure:
 import numpy as np
 
 def __check_zero_params__(job):
-    """This function check the duration, use of renewable, non renewable and doubly
-    constraint resources to be zero, returns True if that's the case and False 
-    otherwise.
+    """This function check the duration, use of renewable, non renewable and doubly constraint resources to be zero, returns True if that's the case and False otherwise.
     Args:
         job (Dict): A dictionary of a job with the structure showed in jobs.py.
     """
@@ -42,8 +41,7 @@ def __check_zero_params__(job):
     return zero_value == 0 and job["mode"] == 1
 
 def get_job_modes(jobs, job_id):
-    """This function return all the modes for the given job id
-    and return a list with the modes.
+    """This function return all the modes for the given job id and return a list with the modes.
     Args:
         jobs (List[Dict]): A list of dictionary of each job.
         job_id (Integer): A number of which job will return its modes.
@@ -59,8 +57,7 @@ def get_job_modes(jobs, job_id):
         return modes
 
 def get_job(jobs, job_id, mode):
-    """This function return the dict structure of the given 
-    job_id and mode.
+    """This function return the dict structure of the given job_id and mode.
     Args:
         jobs (List[Dict]): A list of dictionary of each job.
         job_id (Integer): A number of which job will return its modes.
@@ -72,8 +69,7 @@ def get_job(jobs, job_id, mode):
         in the loaded project.".format(job_id, mode))
 
 def get_initial_job(jobs):
-    """This function find the initial job in the list of job's 
-    dictionary and return its id.
+    """This function find the initial job in the list of job's dictionary and return its id.
     Args:
         jobs (List[Dict]): A list of dictionary of each job.
     """
@@ -83,8 +79,7 @@ def get_initial_job(jobs):
     raise ValueError("The project have an initial job?")
         
 def get_final_job(jobs):
-    """This function find the initial job in the list of job's 
-    dictionary and return its id.
+    """This function find the initial job in the list of job's dictionary and return its id.
     Args:
         jobs (List[Dict]): A list of dictionary of each job.
     """
@@ -93,33 +88,26 @@ def get_final_job(jobs):
             return job["id"]
     raise ValueError("The project have a final job?")
 
-def get_new_job_base_duration(duration, beta_generator):
-    """This function return a new randomly duration for the duration given 
-    using the beta_generator. If the duration is 1 it will add always more 
-    time.
+def get_new_job_base_duration(duration, random_generator):
+    """This function return a new randomly duration for the duration given using the beta_generator. If the duration is 1 it will add always more time.
     Args:
         duration (Integer): A value specifying the duration to change.
-        beta_generator (np.random.beta): Instance of numpy beta random value 
-        generator to get random values.
+        random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
     """
+    new_value = random_generator.rvs()
     new_duration = duration
-    if beta_generator() >= 0.5:
-        #Duration modified
-        if beta_generator() > 0.5:
-            #Duration increased
-            new_duration *= 1 + beta_generator()
+    if new_value < 1 or new_value > -1: # Duration modified
+        if new_value >= 0:
+            new_duration *= 1 + new_value # Duration increased
         else:
-            #Duration decreased
-            new_duration *= beta_generator()
+            new_duration *= abs(new_value) # Duration decreased
     if duration == 1 and new_duration < 1.:
         return 1 + np.ceil(new_duration)
     else:
         return np.ceil(new_duration)
 
-def get_job_risks(base_duration, risks_per_job, beta_generator):
-    """This function will return a dictionary with the risk percentages 
-    and the new duration of the task with the risk applied. The dict will
-    have the following structure:
+def get_job_risks(base_duration, risks_per_job, random_generator):
+    """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
     {
         "risk_1": Float,
         "risk_2": Float,
@@ -128,18 +116,20 @@ def get_job_risks(base_duration, risks_per_job, beta_generator):
     }
     Args:
         base_duration (Integer): A value specifying the duration to apply risks.
-        risks_per_job (Tuple): Tuple of the percentages of happening that risk and
-        its length is the quantity of risks.
-        beta_generator (np.random.beta): Instance of numpy beta random value 
-        generator to get random values.
+        risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
+        (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
     """
     new_duration = base_duration
     risks = {}
+    percentage = lambda: random_generator.cdf(random_generator.rvs())
     percentages = []
     for i, p in enumerate(risks_per_job):
         risk = "risk_{}".format(i+1)
-        if beta_generator() < p:
-            percentage = beta_generator()
+        value = random_generator.rvs()
+        occur = random_generator.cdf(value) < p or random_generator.cdf(value) > (1 - p)
+        valid_percentage = percentage > 1 or percentage < 1
+        if occur:
+            percentage = abs(value)
             risks[risk] = percentage
             percentages.append(percentage)
         else:
