@@ -1,25 +1,20 @@
-"""This file contain the class that structure a schedule for 
-the project and estimates the duration and execution of all tasks.
+"""This file contain the class that structure a schedule for the scenerio and generate the timeline of jobs to do.
 Created by: Edgar RP
-Version: 0.0.3
+Version: 0.0.4
 """
 
 import numpy as np
 import utils.jobs as uj
 
-class project_schedule():
+class schedule():
     
-    def __init__(self, project, beta_generator, n_jobs_risks, risks_per_job):
-        """When you create a project schedule, it generates a schedule 
-        containing all the jobs in a sequential way executed in any mode
-        and also add the random duration for risk and no risk duration.
+    def __init__(self, project, random_generator, n_jobs_risks, risks_per_job):
+        """When you create a project schedule, it generates a schedule containing all the jobs in a sequential way executed in any mode and also add the random duration for risk and no risk duration.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
-            beta_generator (np.random.beta): Instance of numpy beta random value 
-            generator to get random values.
+            beta_generator (np.random.beta): Instance of numpy beta random value generator to get random values.
             n_jobs_risks (Integer): Quantity of jobs which will have risks.
-            risks_per_job (Tuple): Tuple of the percentages of happening that risk and
-            its length is the quantity of risks.
+            risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
         """
         #Parameters for the object
         self.schedule = {}
@@ -64,6 +59,41 @@ class project_schedule():
             if abs(start - time) == 0:
                 finished.append(job_id)
         return finished
+
+    def __set_jobs_durations__(self, jobs, beta_generator):
+        """This function stablish the new base duration for all the jobs 
+        excluding the initial and final jobs. Return nothing
+        Args:
+            jobs (List[Dict]): A list of dictionary of each job.
+            beta_generator (np.random.beta): Instance of numpy beta random value 
+            generator to get random values.
+        """
+        for job in jobs:
+            if job["id"] not in [self.initial_job, self.final_job]:
+                job["init_random_duration"] = uj.get_new_job_base_duration(job["base_duration"], beta_generator)
+
+    def __set_jobs_durations_risks__(self, jobs, n_jobs, risks_per, beta_generator):
+        """This function stablish the new total durations with risk
+        for all the jobs excluding the initial and final jobs.
+        Args:
+            jobs (List[Dict]): A list of dictionary of each job.
+            n_jobs (Integer): Quantity of jobs which will have risks.
+            risks_per (Tuple): Tuple of the percentages of happening that risk and
+            its length is the quantity of risks.
+            beta_generator (np.random.beta): Instance of numpy beta random value 
+            generator to get random values.
+        """
+        jobs_modified = []
+        while len(jobs_modified) < n_jobs:
+            for job in jobs:
+                if job["id"] not in [self.initial_job, self.final_job]:
+                    duration = job["init_random_duration"]
+                    risks = uj.get_job_risks(duration, risks_per, beta_generator)
+                    if risks["total_duration"] != duration:
+                        for key in risks:
+                            job[key] = risks[key]
+                    if job["id"] not in jobs_modified:
+                        jobs_modified.append(job["id"])
 
     def __check_resources__(self):
         pass
@@ -118,8 +148,9 @@ class project_schedule():
                         if predecessor_id in [j[0] for j in done]:
                             candidates.append(job_id)
                     while len(candidates) != 0:
-                        idx = np.floor(beta_generator() * len(candidates))
-                        job_id = 
+                        pass
+                        #idx = np.floor(beta_generator() * len(candidates))
+                        #job_id = 
 
         # Falta revisar que los recursos se mantengan bien en el trasncurso del proyecto
         # Falta comprobar que al finalizar el calendario este el total de jobs
