@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.2.1
+Version: 1.3
 Job Dict Structure:
     {
         "id": Integer
@@ -22,6 +22,7 @@ Job Dict Structure:
 """
 
 import numpy as np
+import scipy.stats as stats
 
 def __check_zero_params__(job):
     """This function check the duration, use of renewable, non renewable and doubly constraint resources to be zero, returns True if that's the case and False otherwise.
@@ -39,6 +40,29 @@ def __check_zero_params__(job):
         zero_value += np.sum(job[key])
 
     return zero_value == 0 and job["mode"] == 1
+
+def __get_dist_prob__(mean, std):
+    """This function return the function callback to generate random probabilities from the normal distribution with mean and std given.
+    Args:
+        mean (Float): The mean of the normal distribution to use for the probabilities callback.
+        std (Float): The std of the normal distribution to use for the probabilities callback.
+    """
+    dist = stats.norm(loc=mean, scale=std)
+    return lambda: dist.cdf(dist.rvs())
+
+def __get_job_distribution__(duration, random_generator):
+    """This function generate the mean, std and the function callback to generate random probabilities from this distribution.
+    Args:
+        duration (Integer): A value specifying the duration to change.
+        random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+    Returns:
+        mean (Float): The mean of the normal distribution.
+        std (Float): The std of the normal distribution.
+        probability (Callback): A python callback that return a value between 0 and 1 for probability.
+    """
+    mean = random_generator.rvs() * duration
+    std = random_generator.rvs() * duration
+    return mean, std, __get_dist_prob__(mean, std)
 
 def get_job_modes(jobs, job_id):
     """This function return all the modes for the given job id and return a list with the modes.
@@ -89,24 +113,28 @@ def get_final_job(jobs):
     raise ValueError("The project have a final job?")
 
 def get_new_job_base_duration(duration, random_generator):
-    """This function return a new randomly duration for the duration given using the beta_generator. If the duration is 1 it will add always more time.
+    """This function return a new randomly duration for the duration given using the random_generator and return the mean and std for the normal distribution of random in this job. If the duration is 1 it will add always more time.
     Args:
         duration (Integer): A value specifying the duration to change.
         random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+    Returns:
+        new_duration (Integer): The new duration for the job.
+        mean (Float): The random value for the mean of the normal distribution for this job.
+        std (Float): The random value for the std of the normal distribution for this job.
     """
-    new_value = random_generator.rvs()
+    mean, std, probability = __get_job_distribution__(duration, random_generator)
     new_duration = duration
-    if new_value < 1 or new_value > -1: # Duration modified
-        if new_value >= 0:
-            new_duration *= 1 + new_value # Duration increased
+    if probability() >= 0.5: # Duration modified
+        if probability() > 0.5:
+            new_duration *= 1 + probability() # Duration increased
         else:
-            new_duration *= abs(new_value) # Duration decreased
+            new_duration *= probability() # Duration decreased
     if duration == 1 and new_duration < 1.:
         return 1 + np.ceil(new_duration)
     else:
-        return np.ceil(new_duration)
+        return np.ceil(new_duration), mean, std
 
-def get_job_risks(base_duration, risks_per_job, random_generator):
+def get_job_risks(base_duration, risks_per_job, mean, std):
     """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
     {
         "risk_1": Float,
@@ -117,19 +145,17 @@ def get_job_risks(base_duration, risks_per_job, random_generator):
     Args:
         base_duration (Integer): A value specifying the duration to apply risks.
         risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
-        (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+        mean (Float): The mean of the normal distribution to use for the probabilities callback.
+        std (Float): The std of the normal distribution to use for the probabilities callback.
     """
     new_duration = base_duration
     risks = {}
-    percentage = lambda: random_generator.cdf(random_generator.rvs())
+    prob = __get_dist_prob__(mean, std)
     percentages = []
     for i, p in enumerate(risks_per_job):
         risk = "risk_{}".format(i+1)
-        value = random_generator.rvs()
-        occur = random_generator.cdf(value) < p or random_generator.cdf(value) > (1 - p)
-        valid_percentage = percentage > 1 or percentage < 1
-        if occur:
-            percentage = abs(value)
+        if prob() < p:
+            percentage = prob()
             risks[risk] = percentage
             percentages.append(percentage)
         else:
