@@ -1,4 +1,5 @@
-"""This file contain the class that structure a schedule for the scenerio and generate the timeline of jobs to do.
+# DEPRECATED
+"""This file contain the class that structure a schedule for the scenario and generate the timeline of jobs to do.
 Created by: Edgar RP
 Version: 0.0.4
 """
