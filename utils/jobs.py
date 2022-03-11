@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.3
+Version: 1.3.1
 Job Dict Structure:
     {
         "id": Integer
@@ -121,7 +121,7 @@ def get_new_job_base_duration(duration, random_generator):
         new_duration (Integer): The new duration for the job.
         mean (Float): The random value for the mean of the normal distribution for this job.
         std (Float): The random value for the std of the normal distribution for this job.
-    """
+    """ 
     mean, std, probability = __get_job_distribution__(duration, random_generator)
     new_duration = duration
     if probability() >= 0.5: # Duration modified
@@ -134,7 +134,7 @@ def get_new_job_base_duration(duration, random_generator):
     else:
         return np.ceil(new_duration), mean, std
 
-def get_job_risks(base_duration, risks_per_job, mean, std):
+def get_job_risks(risks_per_job, mean, std):
     """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
     {
         "risk_1": Float,
@@ -148,18 +148,12 @@ def get_job_risks(base_duration, risks_per_job, mean, std):
         mean (Float): The mean of the normal distribution to use for the probabilities callback.
         std (Float): The std of the normal distribution to use for the probabilities callback.
     """
-    new_duration = base_duration
     risks = {}
     prob = __get_dist_prob__(mean, std)
-    percentages = []
     for i, p in enumerate(risks_per_job):
         risk = "risk_{}".format(i+1)
         if prob() < p:
-            percentage = prob()
-            risks[risk] = percentage
-            percentages.append(percentage)
+            risks[risk] = prob()
         else:
             risks[risk] = None
-    new_duration *= 1 + np.sum(percentages)
-    risks["total_duration"] = np.ceil(new_duration)
     return risks
