@@ -1,7 +1,7 @@
 """This file contain the class that execute and do the genetic algorithm of 
 the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 0.0.3
+Version: 0.0.4
 """
 
 import numpy as np
@@ -21,13 +21,6 @@ class genetica():
 
         self.reset()
         self.crear_poblacion(dim_mapa)
-        self.__set_jobs_durations__(project["jobs"], beta_generator)
-        self.__set_jobs_durations_risks__(
-            project["jobs"], 
-            n_jobs_risks, 
-            risks_per_job, 
-            beta_generator
-        )
 
     def reset(self):
         self.iteracion = 0
