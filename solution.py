@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.0.1
+Version: 0.1
 """
 
 import numpy as np
@@ -8,160 +8,79 @@ import utils.jobs as uj
 class Solution():
     
     def __init__(self, project, random_generator, n_jobs_risks, risks_per_job):
-        """When you create a solution for the project, it generate multiples scenarios where each one have its own schedule and makespan for that schedule. Every schedule use the priority policies to generate its own execution line. The Solution object mantain the risk accross scenearies to make it consistent in every scenario.
+        """When you create a solution for the project, it generate multiples scenarios where each one have its own schedule and makespan for that schedule but share across scenarios the risks and distribution params (mean, std) by job in all the modes. Every schedule use the priority policies to generate its own execution line.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
             n_jobs_risks (Integer): Quantity of jobs which will have risks.
             risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
         """
-        #Parameters for the object
-        self.base_line = None # Generate the first sceneario which will be the base line
-        self.jobs_list = project["jobs"]
         self.makespan = None
-
-        self.renewable_resources_available = project["renewable_resources_total"] #Its mantained as tuple
-        self.nonrenewable_resources_available = np.array(project["nonrenewable_resources_total"])
-        self.doubly_constrained_available = np.array(project["doubly_constrained_total"])
-        self.total_time = project["time_horizon"]
-        self.total_jobs = project["nr_jobs"]
         self.initial_job = uj.get_initial_job(project["jobs"])
         self.final_job = uj.get_final_job(project["jobs"])
-        self.__set_jobs_durations__(project["jobs"], beta_generator)
-        self.__set_jobs_durations_risks__(
-            project["jobs"], 
-            n_jobs_risks, 
-            risks_per_job, 
-            random_generator
-        )
-        
-
-    def __get_available_jobs__(self, to_do, done, beta_generator):
-        """This function return a randomized list of the availables 
-        jobs ids based in the to_do list and the done list.
-        Args:
-            to_do (List[Tuple]): A list of tuples with (job_id, predecessor_id).
-            done (List[Tuple]): A list of tuples with (job_id, job_mode, start_tick).
-            beta_generator (np.random.beta): Instance of numpy beta random value 
-            generator to get random values.
-        """
-        candidates = []
-        for job_id, predecessor_id in to_do:
-            if predecessor_id in [j[0] for j in done]:
-                candidates.append(job_id)
-        available = []
-        while len(candidates) != 0:
-            available.append(
-                candidates.pop(int(beta_generator() * len(candidates)))
-            )
-        return available
-
-    def __get_finished_jobs__(self, doing, time):
-        """This function return a list of the finished jobs ids and the 
-        using the doing jobs list.
-        Args:
-            doing (List[Tuple]): A list of tuples with (job_id, job_mode, start_tick).
-            time (Integer): An integer specifying in what tick of time is actually.
-        """
-        finished = []
-        for job_id, _, start in doing:
-            if abs(start - time) == 0:
-                finished.append(job_id)
-        return finished
-
-    def __set_jobs_durations__(self, jobs, beta_generator):
-        """This function stablish the new base duration for all the jobs 
-        excluding the initial and final jobs. Return nothing
+        self.__set_job_list__(project["jobs"])
+        self.__set_jobs_dist_params__(project["jobs"], random_generator)
+        self.__set_jobs_risks__(n_jobs_risks, risks_per_job, random_generator)
+        self.base_line = None # Generate the first sceneario which will be the base line
+    
+    def __set_job_list__(self, jobs):
+        """This function set the dictionary of all the jobs in the project. This dictionary doesn't take into account the modes for the jobs but instead only focus in summarize the general parameters accross the scenearios like the risks and distribution params in the value elements.
         Args:
             jobs (List[Dict]): A list of dictionary of each job.
-            beta_generator (np.random.beta): Instance of numpy beta random value 
-            generator to get random values.
         """
+        self.jobs = {}
         for job in jobs:
-            if job["id"] not in [self.initial_job, self.final_job]:
-                job["init_random_duration"] = uj.get_new_job_base_duration(job["base_duration"], beta_generator)
+            job_id = job["id"]
+            if job_id not in self.jobs.keys():
+                if job_id == self.initial_job:
+                    self.jobs[job_id] = {"initial": True}
+                elif job_id == self.final_job:
+                    self.jobs[job_id] = {"final": True}
+                else:
+                    self.jobs[job_id] = {}
 
-    def __set_jobs_durations_risks__(self, jobs, n_jobs, risks_per, beta_generator):
-        """This function stablish the new total durations with risk
-        for all the jobs excluding the initial and final jobs.
+    def __set_jobs_dist_params__(self, jobs, random_generator):
+        """This function set the distribution params (mean and std) for all the jobs, excluding initial and final, to have common parameters to generate random values in its duration and risks.
         Args:
             jobs (List[Dict]): A list of dictionary of each job.
-            n_jobs (Integer): Quantity of jobs which will have risks.
-            risks_per (Tuple): Tuple of the percentages of happening that risk and
-            its length is the quantity of risks.
-            beta_generator (np.random.beta): Instance of numpy beta random value 
-            generator to get random values.
+            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
         """
+        prob = lambda: random_generator.cdf(random_generator.rvs())
+        for job_id in self.jobs:
+            if job_id not in [self.initial_job, self.final_job]:
+                modes = uj.get_job_modes_duration(jobs, job_id)
+                index = int(prob()*len(modes)) #Chose a random mode to use as base duration to generate the mean and std for all the jobs
+                duration = modes[list(modes.keys())[index]]
+                mean, std = uj.get_job_dist_params(duration, random_generator)
+                self.jobs[job_id]["normal_dist_mean"] = mean
+                self.jobs[job_id]["normal_dist_std"] = std
+
+    def __set_jobs_risks__(self, n_jobs, risks_per, random_generator):
+        """This function set the risk for every job in the solution given the n_jobs with risks and risk_per job.
+        Args:
+            n_jobs (Integer): Quantity of jobs which will have risks.
+            risks_per (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
+            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+        """
+        prob = lambda: random_generator.cdf(random_generator.rvs())
         jobs_modified = []
         while len(jobs_modified) < n_jobs:
-            for job in jobs:
-                if job["id"] not in [self.initial_job, self.final_job]:
-                    duration = job["init_random_duration"]
-                    risks = uj.get_job_risks(duration, risks_per, beta_generator)
-                    if risks["total_duration"] != duration:
-                        for key in risks:
-                            job[key] = risks[key]
-                    if job["id"] not in jobs_modified:
-                        jobs_modified.append(job["id"])
+            index = int(prob()*len(self.jobs))
+            job_id = list(self.jobs.keys())[index]
+            if job_id not in [self.initial_job, self.final_job] + jobs_modified:
+                mean = self.jobs[job_id]["normal_dist_mean"]
+                std = self.jobs[job_id]["normal_dist_std"]
+                risks = uj.get_job_risks(risks_per, mean, std)
+                is_none = True
+                for r in risks:
+                    is_none = is_none and risks[r] == None
+                    self.jobs[job_id][r] = risks[r]
+                if not is_none:
+                    jobs_modified.append(job_id)
 
-    def __check_resources__(self):
-        pass
-
-    def __build_schedule__(self, jobs, beta_generator):
-        """This function build the schedule dict for all the jobs given 
-        and return a dict with all the ticks in time. The structure of 
-        the schedule will be keys the time t and values a list of jobs done 
-        in that tick:
-        {
-            0: [
-                {
-                    "id": Int,
-                    "mode": Int,
-                    "total_duration": Int
-                    "successors": List[Int]
-                }
-            ],
-            1: [
-                {
-                    "id": Int,
-                    "mode": Int,
-                    "total_duration": Int
-                    "successors": List[Int]
-                }
-            ]
-            ...
-        }
-        Args:
-            jobs (List[Dict]): A list of dictionary of each job.
-            beta_generator (np.random.beta): Instance of numpy beta random value 
-                generator to get random values.
-        """
-        to_do = [] # (job_id, predecessor_id)
-        done = [] # (job_id, job_mode, start_tick)
-        doing = [] # (job_id, job_mode, start_tick)
-        for i in range(self.total_time + 1):
-            if i == 0: 
-                job = uj.get_job(jobs, self.initial_job, 1)
-                done.append((self.initial_job, 1, i))
-                self.schedule[i] = [job]
-                for j in job["successors"]:
-                    to_do.append((j, self.initial_job))
-            else:
-                # Check if there are jobs doing it and get what jobs finish
-                # Append new jobs in to_do after a job finish
-                # Try to do as many jobs as it can
-                if len(doing) == 0:
-                    # There are no jobs, then add some to doing
-                    candidates = []
-                    for job_id, predecessor_id in to_do:
-                        if predecessor_id in [j[0] for j in done]:
-                            candidates.append(job_id)
-                    while len(candidates) != 0:
-                        pass
-                        #idx = np.floor(beta_generator() * len(candidates))
-                        #job_id = 
-
-        # Falta revisar que los recursos se mantengan bien en el trasncurso del proyecto
-        # Falta comprobar que al finalizar el calendario este el total de jobs
-        # Falta cambiar la estructura del dict que pasara a ser la lista de done
-        # Falta calcular el tiempo total usado por el cronograma
+        # Let the remaining jobs with risks as None value
+        for job_id in self.jobs:
+            if job_id not in [self.initial_job, self.final_job] + jobs_modified:
+                risks = uj.get_job_risks(np.zeros_like(risks_per), 0, 1)
+                for r in risks:
+                    self.jobs[job_id][r] = risks[r]
