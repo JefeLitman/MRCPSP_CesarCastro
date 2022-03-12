@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.4
+Version: 1.4.1
 Job Dict Structure:
     {
         "id": Integer
@@ -125,7 +125,7 @@ def get_new_job_base_duration(duration, mean, std):
     if duration == 1 and new_duration < 1.:
         return 1 + np.ceil(new_duration)
     else:
-        return np.ceil(new_duration), mean, std
+        return np.ceil(new_duration)
 
 def get_job_risks(risks_per_job, mean, std):
     """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
