@@ -1,86 +1,60 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.1
+Version: 0.2
 """
 
 import numpy as np
 import utils.jobs as uj
+from schedule import Schedule
 class Solution():
     
-    def __init__(self, project, random_generator, n_jobs_risks, risks_per_job):
-        """When you create a solution for the project, it generate multiples scenarios where each one have its own schedule and makespan for that schedule but share across scenarios the risks and distribution params (mean, std) by job in all the modes. Every schedule use the priority policies to generate its own execution line.
+    def __init__(self, project, job_params, n_scenarios_sol, tol_invalid_sch = 10):
+        """When you create a solution for the project, it generate multiples scenarios where each one have its own makespan and the same execution_line of the base line schedule but share across scenarios the risks and distribution params (mean, std) by job in all the modes. Every schedule use the priority policies to generate its own execution line.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
-            n_jobs_risks (Integer): Quantity of jobs which will have risks.
-            risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
+            job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
+            n_scenearios_job (Int): Number of scenarios per solution, an integer indicating how many scenarios must be created using the base line to obtain the mean makespan.
+            tol_invalid_sch (Int): Tolerance of invalid schedules created, an integer indicating how many retries it can until to get a valid schedule solution.
         """
-        self.makespan = None
-        self.initial_job = uj.get_initial_job(project["jobs"])
-        self.final_job = uj.get_final_job(project["jobs"])
-        self.__set_job_list__(project["jobs"])
-        self.__set_jobs_dist_params__(project["jobs"], random_generator)
-        self.__set_jobs_risks__(n_jobs_risks, risks_per_job, random_generator)
-        self.base_line = None # Generate the first sceneario which will be the base line
-    
-    def __set_job_list__(self, jobs):
-        """This function set the dictionary of all the jobs in the project. This dictionary doesn't take into account the modes for the jobs but instead only focus in summarize the general parameters accross the scenearios like the risks and distribution params in the value elements.
-        Args:
-            jobs (List[Dict]): A list of dictionary of each job.
-        """
-        self.jobs = {}
-        for job in jobs:
-            job_id = job["id"]
-            if job_id not in self.jobs.keys():
-                if job_id == self.initial_job:
-                    self.jobs[job_id] = {"initial": True}
-                elif job_id == self.final_job:
-                    self.jobs[job_id] = {"final": True}
-                else:
-                    self.jobs[job_id] = {}
+        self.renewable_resources_total = project["renewable_resources_total"]
+        self.nonrenewable_resources_total = project["nonrenewable_resources_total"]
+        self.doubly_constrained_total = project["doubly_constrained_total"]
+        # Create a valid base line checking every creation
+        for i in range(tol_invalid_sch):
+            self.base_line = Schedule(project, job_params) 
+            if self.__check_valid_schedule__(self.base_line, project["jobs"]):
+                break
+            elif i == tol_invalid_sch - 1:
+                raise InterruptedError("There was a invalid solution in the resources use, for that reason check the jobs resource use and total available resources in the project.")
+        # Creation of every scenario for the base line
+        self.scenarios = []
+        for _ in range(n_scenarios_sol):
+            self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
 
-    def __set_jobs_dist_params__(self, jobs, random_generator):
-        """This function set the distribution params (mean and std) for all the jobs, excluding initial and final, to have common parameters to generate random values in its duration and risks.
-        Args:
-            jobs (List[Dict]): A list of dictionary of each job.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
-        """
-        prob = lambda: random_generator.cdf(random_generator.rvs())
-        for job_id in self.jobs:
-            if job_id not in [self.initial_job, self.final_job]:
-                modes = uj.get_job_modes_duration(jobs, job_id)
-                index = int(prob()*len(modes)) #Chose a random mode to use as base duration to generate the mean and std for all the jobs
-                duration = modes[list(modes.keys())[index]]
-                mean, std = uj.get_job_dist_params(duration, random_generator)
-                self.jobs[job_id]["normal_dist_mean"] = mean
-                self.jobs[job_id]["normal_dist_std"] = std
+        self.makespan = self.base_line.time_line[-1]
+        self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
 
-    def __set_jobs_risks__(self, n_jobs, risks_per, random_generator):
-        """This function set the risk for every job in the solution given the n_jobs with risks and risk_per job.
+    def __check_valid_schedule__(self, schedule, jobs):
+        """This function checks the resource use of the given schedule to determine if its valid. The time of the schedule is already checked when its created to not go beyond the time_horizon of the project. Everytime is executed the use of resources is updated.
         Args:
-            n_jobs (Integer): Quantity of jobs which will have risks.
-            risks_per (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+            schedule (Schedule): Instance of the class schedule that contains and execution_line and a time_line.
+            jobs (List[Dict]): A list of dictionary of each job in its raw format.
         """
-        prob = lambda: random_generator.cdf(random_generator.rvs())
-        jobs_modified = []
-        while len(jobs_modified) < n_jobs:
-            index = int(prob()*len(self.jobs))
-            job_id = list(self.jobs.keys())[index]
-            if job_id not in [self.initial_job, self.final_job] + jobs_modified:
-                mean = self.jobs[job_id]["normal_dist_mean"]
-                std = self.jobs[job_id]["normal_dist_std"]
-                risks = uj.get_job_risks(risks_per, mean, std)
-                is_none = True
-                for r in risks:
-                    is_none = is_none and risks[r] == None
-                    self.jobs[job_id][r] = risks[r]
-                if not is_none:
-                    jobs_modified.append(job_id)
+        valid = True
+        self.renewable_resources_use = np.zeros_like(self.renewable_resources_total)
+        self.nonrenewable_resources_use = np.zeros_like(self.nonrenewable_resources_total)
+        self.doubly_constrained_use = np.zeros_like(self.doubly_constrained_total)
+        for job_str in schedule.execution_line:
+            job_id, job_mode = job_str.split(".")
+            job = uj.get_job(jobs, int(job_id), int(job_mode))
+            self.renewable_resources_use += job["renewable_resources_use"]
+            self.nonrenewable_resources_use += job["nonrenewable_resources_use"]
+            self.doubly_constrained_use += job["doubly_constrained_use"]
 
-        # Let the remaining jobs with risks as None value
-        for job_id in self.jobs:
-            if job_id not in [self.initial_job, self.final_job] + jobs_modified:
-                risks = uj.get_job_risks(np.zeros_like(risks_per), 0, 1)
-                for r in risks:
-                    self.jobs[job_id][r] = risks[r]
+            for i in range(len(self.nonrenewable_resources_use)):
+                valid = valid and \
+                    self.nonrenewable_resources_use[i] <= self.nonrenewable_resources_total[i]
+            for i in range(len(self.renewable_resources_use)):
+                valid = valid and \
+                    job["renewable_resources_use"][i] <= self.renewable_resources_total[i]
+        return valid
