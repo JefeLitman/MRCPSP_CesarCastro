@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 0.1
+Version: 0.2
 """
 
 import numpy as np
@@ -40,35 +40,6 @@ class Genetic_Algorithm():
             self.solutions.append(
                 Solution(project, self.jobs, n_scenarios_sol, tol_invalid_sch)
             )
-
-    def reset(self):
-        self.iteracion = 0
-        self.radio_mutacion = 1
-        self.mejor_poblacion = (None,None)
-        self.mejor_puntaje = 999
-
-    def get_posiciones(self):
-        posiciones = []
-        for ind in self.poblacion:
-            posiciones.append(ind.posicion)
-        return posiciones
-
-    def set_posicion_inicial(self,posicion_inicial):
-        for coche in self.poblacion:
-            coche.posicion = deepcopy(posicion_inicial)
-
-    def get_estados(self):
-        return [c.vivo for c in self.poblacion]
-
-    def revivir_poblacion(self):
-        for ind in self.poblacion:
-            ind.vivo = True
-
-    def crear_poblacion(self,limites):
-        for i in range(self.tam_poblacion):
-            coche = carro(i)
-            coche.definir_limites(limites[0],limites[1])
-            self.poblacion.append(coche)
 
     def escoger_ganadores(self):
         """Esta funcion ordena la poblacion entera por puntuacion"""
@@ -239,3 +210,11 @@ class Genetic_Algorithm():
                 risks = uj.get_job_risks(np.zeros_like(risks_per), 0, 1)
                 for r in risks:
                     self.jobs[job_id][r] = risks[r]
+
+    def evolve_poblation(self, prob_ranges, n_cross_points, n_mutations, random_generator):
+        """This function updates or make advance the initial poblation to the following generation, this method execute the crossover, mutation and sort solutions from best to worst to select who solutions will stay and which will be deleted.
+        Args:
+            prob_ranges (Tuple[Float]): A tuple with two elements, the first one is the lowest probability for the last parent and the last element is the higher probability for the first parent sorted from best to worst.
+            n_cross_points (Int): An integer indicating how many points will be taking to crossover two parents randomly selected.
+            n_mutations (Int): An integer indicating how many mutation tries must be executed by every job per solution. The mutations will be only to change the mode of the job.
+        """
