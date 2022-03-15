@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.2
+Version: 0.3
 """
 
 import numpy as np
@@ -58,3 +58,14 @@ class Solution():
                 valid = valid and \
                     job["renewable_resources_use"][i] <= self.renewable_resources_total[i]
         return valid
+
+    def remake_scenarios(self, project, job_params, n_scenarios):
+        """This function is in order to make again the number of scenarios given for this solution using the created base line. This method can be only executed after a solution is selected to evaluate in a different size of scenarios for the metrics
+        Args:
+            project (Dict): Dictionary containing all the parameters for the project.
+            job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
+            n_scenarios (Int): An integer indicating how many scenarios must be recreated using the base line.
+        """
+        self.scenarios = []
+        for _ in range(n_scenarios):
+            self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
