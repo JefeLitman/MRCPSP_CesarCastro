@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.3.1
+Version: 0.3.2
 """
 
 import numpy as np
@@ -13,7 +13,7 @@ class Solution():
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
-            n_scenearios_job (Int): Number of scenarios per solution, an integer indicating how many scenarios must be created using the base line to obtain the mean makespan.
+            n_scenarios_job (Int): Number of scenarios per solution, an integer indicating how many scenarios must be created using the base line to obtain the mean makespan.
             tol_invalid_sch (Int): Tolerance of invalid schedules created, an integer indicating how many retries it can until to get a valid schedule solution.
         """
         self.renewable_resources_total = project["renewable_resources_total"]
@@ -66,5 +66,35 @@ class Solution():
         for _ in range(n_scenarios):
             self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
 
-    def crossover_solutions(self, solution_1, solution_2, n_points, project):
-        """This function is in order to recreate a Solution instance with a new execution line, check if the execution line is valid or re make the crossover operation with an invalid execution_line. It doesn't return nothing but instead re set the base line and quantity of scenarios """
+    def crossover_solutions(self, exec_line_0, exec_line_1, n_points, project, job_params, random_generator):
+        """This function is in order to recreate a Solution instance with a new execution line, check if the execution line is valid or re make the crossover operation with an invalid execution_line. It return nothing but instead re set the base line and quantity of scenarios.
+        Args:
+            exec_line_0 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            exec_line_1 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            n_points (Int): An integer indicating how many points will be taking to make the crossover operation.
+            project (Dict): Dictionary containing all the parameters for the project.
+            job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
+            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+        """
+        assert len(exec_line_0) == len(exec_line_1) and len(exec_line_0) > 3
+        n_jobs = len(exec_line_1)
+        assert n_points < int(n_jobs / 2) and n_points > 0
+        prob = lambda: random_generator.cdf(random_generator.rvs())
+        crossover_points = [(0, int(prob()*2))] # List of tuples with (start_index, parent)
+        while len(crossover_points) < n_points + 1:
+            index = int(prob()*n_jobs)
+            next_parent = (crossover_points[-1][1] + 1) % 2
+            if index > crossover_points[-1][0]:
+                if len(crossover_points) < n_points and index != n_jobs - 1: 
+                    crossover_points.append((index, next_parent))
+                elif len(crossover_points) == n_points:
+                    crossover_points.append((index, next_parent))
+        crossover_points += [(n_jobs, None)]
+        
+        exec_line = []
+        for i in range(len(crossover_points) - 1):
+            start_point, parent_index = crossover_points[i]
+            end_point, _ = crossover_points[i + 1]
+            parent = locals()["exec_line_{}".format(parent_index)]
+            exec_line += parent[start_point:end_point]
+        # Remover los jobs repetidos y colocar los que faltan al final
