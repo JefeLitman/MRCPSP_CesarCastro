@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line and time line of jobs to do.
 Created by: Edgar RP
-Version: 1.0
+Version: 1.0.1
 """
 
 import numpy as np
@@ -13,7 +13,7 @@ class Schedule():
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
-            execution_line (List[Tuples]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            execution_line (List[Str]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
         """
         self.total_time = project["time_horizon"]
         self.total_jobs = project["nr_jobs"]
