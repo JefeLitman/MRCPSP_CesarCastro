@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.3
+Version: 0.3.1
 """
 
 import numpy as np
@@ -26,11 +26,7 @@ class Solution():
                 break
             elif i == tol_invalid_sch - 1:
                 raise InterruptedError("There was a invalid solution in the resources use, for that reason check the jobs resource use and total available resources in the project.")
-        # Creation of every scenario for the base line
-        self.scenarios = []
-        for _ in range(n_scenarios_sol):
-            self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
-
+        self.make_scenarios(project, job_params, n_scenarios_sol)
         self.makespan = self.base_line.time_line[-1]
         self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
 
@@ -59,8 +55,8 @@ class Solution():
                     job["renewable_resources_use"][i] <= self.renewable_resources_total[i]
         return valid
 
-    def remake_scenarios(self, project, job_params, n_scenarios):
-        """This function is in order to make again the number of scenarios given for this solution using the created base line. This method can be only executed after a solution is selected to evaluate in a different size of scenarios for the metrics
+    def make_scenarios(self, project, job_params, n_scenarios):
+        """This function is in order to make the number of scenarios given for this solution using the created base line. This method can be only executed after a base line is setted in the solution instance object.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
@@ -69,3 +65,6 @@ class Solution():
         self.scenarios = []
         for _ in range(n_scenarios):
             self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
+
+    def crossover_solutions(self, solution_1, solution_2, n_points, project):
+        """This function is in order to recreate a Solution instance with a new execution line, check if the execution line is valid or re make the crossover operation with an invalid execution_line. It doesn't return nothing but instead re set the base line and quantity of scenarios """
