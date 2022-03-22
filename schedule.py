@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line and time line of jobs to do.
 Created by: Edgar RP
-Version: 1.0.1
+Version: 1.1
 """
 
 import numpy as np
@@ -68,13 +68,11 @@ class Schedule():
         Args:
             execution_line (List[Tuples]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed. If this parameter is given then the schedule only rebuilds the time_line variable.
         """
+        #First it must be executed the initial job
+        done = [(self.initial_job, 1, 0)] # (job_id, job_mode, start_tick)
+        to_do = self.__get_available_jobs__(done)
+        time = 0
         if execution_line == None:
-            #First it must be executed the initial job
-            job = uj.get_job(self.job_list, self.initial_job, 1)
-            done = [(self.initial_job, 1, 0)] # (job_id, job_mode, start_tick)
-            to_do = self.__get_available_jobs__(done)
-
-            time = 0
             while time < self.total_time:
                 if len(done) < self.total_jobs - 1:
                     job_id, job_mode = self.__select_best_job__(to_do)
@@ -85,22 +83,32 @@ class Schedule():
                 else:
                     done += [(self.final_job, 1, time)]
                     time = self.total_time
-            
-            self.execution_line = []
-            self.time_line = []
-            for job_id, job_mode, start_time in done:
-                self.execution_line.append("{}.{}".format(job_id, job_mode))
-                self.time_line.append(start_time)
         else:
-            self.execution_line = execution_line
-            time = 0
-            self.time_line = [time]
+            dependencies_problem = []
             for job_string in execution_line[1:-1]:
-                job_id, job_mode = job_string.split(".")
-                self.time_line.append(time)
-                duration = uj.get_job(self.job_list, int(job_id), int(job_mode))["total_duration"]
-                time = self.time_line[-1] + duration
-            self.time_line.append(time)
+                job_id, job_mode = [int(i) for i in job_string.split(".")]
+                if (job_id, job_mode) in [(i, j) for i, j, k in to_do]:
+                    job = uj.get_job(self.job_list, job_id, job_mode)
+                    done += [(job_id, job_mode, time)]
+                    to_do = self.__get_available_jobs__(done)
+                    time += job["total_duration"]
+                else:
+                    dependencies_problem.append((job_id, job_mode))
+            
+            if len(done) < self.total_jobs - 1 and len(dependencies_problem) > 0:
+                for job_id, job_mode in dependencies_problem:
+                    job = uj.get_job(self.job_list, job_id, job_mode)
+                    done += [(job_id, job_mode, time)]
+                    time += job["total_duration"]
+            
+            done += [(self.final_job, 1, time)]
+            time = self.total_time
+            
+        self.execution_line = []
+        self.time_line = []
+        for job_id, job_mode, start_time in done:
+            self.execution_line.append("{}.{}".format(job_id, job_mode))
+            self.time_line.append(start_time)
 
     def __get_available_jobs__(self, done_jobs):
         """This function is in charge to return a List of tuples with elements formmatted as (job_id, job_mode, predecessor_id) to get all the available jobs given the jobs given.
