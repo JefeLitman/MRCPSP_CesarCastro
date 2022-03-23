@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.3.2
+Version: 0.4
 """
 
 import numpy as np
@@ -19,14 +19,10 @@ class Solution():
         self.renewable_resources_total = project["renewable_resources_total"]
         self.nonrenewable_resources_total = project["nonrenewable_resources_total"]
         self.doubly_constrained_total = project["doubly_constrained_total"]
-        # Create a valid base line checking every creation
-        for i in range(tol_invalid_sch):
-            self.base_line = Schedule(project, job_params) 
-            if self.__check_valid_schedule__(self.base_line, project["jobs"]):
-                break
-            elif i == tol_invalid_sch - 1:
-                raise InterruptedError("There was a invalid solution in the resources use, for that reason check the jobs resource use and total available resources in the project.")
-        self.make_scenarios(project, job_params, n_scenarios_sol)
+        self.tolerance = tol_invalid_sch
+        self.n_scenarios = n_scenarios_sol
+        self.__create_valid_base_line__(project, job_params)
+        self.make_scenarios(project, job_params)
         self.makespan = self.base_line.time_line[-1]
         self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
 
@@ -55,15 +51,28 @@ class Solution():
                     job["renewable_resources_use"][i] <= self.renewable_resources_total[i]
         return valid
 
-    def make_scenarios(self, project, job_params, n_scenarios):
+    def __create_valid_base_line__(self, project, job_params, exec_line = None):
+        """This function create a valid base_line given the project data, job parameters, the tolerance for invalid schedules and an execution line to use. It returns nothing but set the base_line parameter in the object.
+        Args:
+            project (Dict): Dictionary containing all the parameters for the project.
+            job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+        """
+        for i in range(self.tolerance):
+            self.base_line = Schedule(project, job_params, exec_line) 
+            if self.__check_valid_schedule__(self.base_line, project["jobs"]):
+                break
+            elif i == self.tolerance - 1:
+                raise InterruptedError("There was a invalid solution in the resources use, for that reason check the jobs resource use and total available resources in the project.")
+
+    def make_scenarios(self, project, job_params):
         """This function is in order to make the number of scenarios given for this solution using the created base line. This method can be only executed after a base line is setted in the solution instance object.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
-            n_scenarios (Int): An integer indicating how many scenarios must be recreated using the base line.
         """
         self.scenarios = []
-        for _ in range(n_scenarios):
+        for _ in range(self.n_scenarios):
             self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
 
     def crossover_solutions(self, exec_line_0, exec_line_1, n_points, project, job_params, random_generator):
@@ -96,5 +105,28 @@ class Solution():
             start_point, parent_index = crossover_points[i]
             end_point, _ = crossover_points[i + 1]
             parent = locals()["exec_line_{}".format(parent_index)]
-            exec_line += parent[start_point:end_point]
-        # Remover los jobs repetidos y colocar los que faltan al final
+            self.__add_no_repeated_jobs__(exec_line, parent, start_point, end_point - start_point)
+
+        exec_line.append(parent[-1]) # Add at the end the last fictional job
+        self.__create_valid_base_line__(project, job_params, exec_line)
+        self.make_scenarios(project, job_params)
+        self.makespan = self.base_line.time_line[-1]
+        self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
+
+    def __add_no_repeated_jobs__(self, exec_line, parent, start_index, n_add):
+        """This function add the quantity of end_index - start_jobs in the exec line using all the jobs in the parent until the quantity of jobs is accomplished. It return None but modify the exec_line element
+        Args:
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be added from parent.
+            parent (List[Str]): A List of strings from the parent in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            start_index (Int): An integer indicating the index in which the parent jobs will start to add.
+            n_add (Int): An integer indicating how many jobs will be added from the parent to exec_line.
+        """
+        jobs = [int(job_string.split('.')[0]) for job_string in exec_line]
+        jobs_to_add = []
+        index = start_index
+        while len(jobs_to_add) < n_add:
+            job_id, _ = [int(i) for i in parent[index].split('.')]
+            if job_id not in jobs:
+                jobs_to_add.append(parent[index])
+            index = (index + 1) % len(parent) - 1 # Exclude the last job 
+        exec_line += jobs_to_add
