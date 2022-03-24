@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.4
+Version: 0.5
 """
 
 import numpy as np
@@ -21,10 +21,7 @@ class Solution():
         self.doubly_constrained_total = project["doubly_constrained_total"]
         self.tolerance = tol_invalid_sch
         self.n_scenarios = n_scenarios_sol
-        self.__create_valid_base_line__(project, job_params)
-        self.make_scenarios(project, job_params)
-        self.makespan = self.base_line.time_line[-1]
-        self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
+        self.__set_parameters__(project, job_params)
 
     def __check_valid_schedule__(self, schedule, jobs):
         """This function checks the resource use of the given schedule to determine if its valid. The time of the schedule is already checked when its created to not go beyond the time_horizon of the project. Everytime is executed the use of resources is updated.
@@ -98,7 +95,7 @@ class Solution():
                     crossover_points.append((index, next_parent))
                 elif len(crossover_points) == n_points:
                     crossover_points.append((index, next_parent))
-        crossover_points += [(n_jobs, None)]
+        crossover_points += [(n_jobs - 1, None)]
         
         exec_line = []
         for i in range(len(crossover_points) - 1):
@@ -108,10 +105,8 @@ class Solution():
             self.__add_no_repeated_jobs__(exec_line, parent, start_point, end_point - start_point)
 
         exec_line.append(parent[-1]) # Add at the end the last fictional job
-        self.__create_valid_base_line__(project, job_params, exec_line)
-        self.make_scenarios(project, job_params)
-        self.makespan = self.base_line.time_line[-1]
-        self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
+        assert len(exec_line) == n_jobs
+        self.__set_parameters__(project, job_params, exec_line)
 
     def __add_no_repeated_jobs__(self, exec_line, parent, start_index, n_add):
         """This function add the quantity of end_index - start_jobs in the exec line using all the jobs in the parent until the quantity of jobs is accomplished. It return None but modify the exec_line element
@@ -128,5 +123,18 @@ class Solution():
             job_id, _ = [int(i) for i in parent[index].split('.')]
             if job_id not in jobs:
                 jobs_to_add.append(parent[index])
-            index = (index + 1) % len(parent) - 1 # Exclude the last job 
+                jobs.append(job_id)
+            index = (index + 1) % (len(parent) - 1) # Exclude the last job 
         exec_line += jobs_to_add
+
+    def __set_parameters__(self, project, job_params, exec_line = None):
+        """This method set the parameters of base_line, scenarios, makespan and mean_makespan in the object using the project data, job parameters and optionally the execution line to create the base_line.
+        Args:
+            project (Dict): Dictionary containing all the parameters for the project.
+            job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+        """
+        self.__create_valid_base_line__(project, job_params, exec_line)
+        self.make_scenarios(project, job_params)
+        self.makespan = self.base_line.time_line[-1]
+        self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
