@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.5
+Version: 0.6
 """
 
 import numpy as np
@@ -138,3 +138,4 @@ class Solution():
         self.make_scenarios(project, job_params)
         self.makespan = self.base_line.time_line[-1]
         self.mean_makespan = np.mean([i.time_line[-1] for i in self.scenarios])
+        self.std_makespan = np.std([i.time_line[-1] for i in self.scenarios])
