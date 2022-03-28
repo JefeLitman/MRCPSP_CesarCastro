@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 0.7
+Version: 1.0
 """
 
 import numpy as np
@@ -64,6 +64,7 @@ class Solution():
                 break
             else:
                 if exec_line:
+                    print("The crossover and mutation of two individuals lead to an invalid solution, then it will be created a new one from zeros")
                     creator = lambda: Schedule(project, job_params) 
                 elif i == self.tolerance - 1:
                     raise InterruptedError("There was a invalid solution in the resources use, for that reason check the jobs resource use and total available resources in the project.")
