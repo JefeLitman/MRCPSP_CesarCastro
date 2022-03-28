@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 0.3
+Version: 1.0
 """
 
 import numpy as np
@@ -61,60 +61,6 @@ class Genetic_Algorithm():
         X_std = (X - np.min(X)) / (np.max(X) - np.min(X))
         X_scaled = X_std * (new_max - new_min) + new_min
         return X_scaled
-
-    def evolucionar_poblacion(self):
-        """Funcion que se encarga de evolucionar toda la poblacion a la sig
-        generacion, si llega a fallar retornara Falso"""
-        """Escojo los ganadores"""
-        self.escoger_ganadores()
-
-        """Actualizo al mejor de la poblacion"""
-        self.actualizar_mejor()
-
-        """Reviso que cada ganador este en un lugar valido o de lo contrario
-        vuelvo a crear una poblacion. En caso de que todos sean validos defino
-        el radio de mutacion"""
-        for ind in self.poblacion[:4]:
-            if(ind.vivo == False):
-                return False #Si retorno falso es que no se pudo evolucionar
-
-        """Si todos los ganadores estan bien entonces modifico el radio de mutacion
-        y aumento la iteracion"""
-        self.radio_mutacion = np.random.random()
-
-        """Se va rellenar la poblacion con los nuevos hijos"""
-        nue_poblacion = self.poblacion[:4]
-
-        #1 Hijo de los dos mejores ganadores
-        nue_poblacion.append(self.cruzar_individuos(self.poblacion[0],self.poblacion[1],self.poblacion[4].get_indice()))
-
-        #3 Hijos de dos ganadores aleatorios
-        for i in range(5,8):
-            ind_padre = np.random.randint(4)
-            ind_madre = np.random.randint(4)
-            nue_poblacion.append(self.cruzar_individuos(self.poblacion[ind_padre], self.poblacion[ind_madre], self.poblacion[i].get_indice()))
-
-        #2 Hijos como copia directa
-        for i in range(8,10):
-            copia = deepcopy(self.poblacion[np.random.randint(4)])
-            copia.indice = self.poblacion[i].get_indice()
-            nue_poblacion.append(copia)
-
-        """Ahora es tiempo de mutar los individuos de la nueva poblacion"""
-        for ind in nue_poblacion:
-            self.mutar_individuo(ind)
-
-        """Debemos colocar en posicion los nuevos individuos de la nueva poblacion"""
-        for i,ind in enumerate(nue_poblacion):
-            limites = self.poblacion[i].get_limites()
-            ind.definir_limites(limites[0],limites[1])
-            ind.posicion = self.poblacion[i].posicion
-
-        """Por ultimo debemos cambiar la poblacion y ordenarla por indice"""
-        self.poblacion = nue_poblacion
-        self.ordenar_poblacion()
-        self.iteracion = self.iteracion + 1
-        return True
 
     def __set_job_list__(self, jobs):
         """This function set the dictionary of all the jobs in the project. This dictionary doesn't take into account the modes for the jobs but instead only focus in summarize the general parameters accross the scenearios like the risks and distribution params in the value elements.
@@ -190,11 +136,31 @@ class Genetic_Algorithm():
                 raise AssertionError("The range of probabilities must be between 0 and 1 (not included) to let all the winners participate in the tournament to be selected as father. Prob range given: {}".format(prob_ranges))
         # The poblation is already ordered and will be ordered at the last moment
         winners = self.solutions[:self.n_winners]
+        prob = lambda: random_generator.cdf(random_generator.rvs())
         probabilities = self.__min_max_scaler__(
             [np.abs(s.mean_makespan - self.mean_makespan) for s in winners], 
             min(prob_ranges), 
             max(prob_ranges)
         )
+        for index in range(self.n_winners, self.n_total_sol):
+            # Select which parents will be used to make the crossover
+            parents = []
+            while len(parents) < 2:
+                random_value = prob()
+                for i in range(len(winners)-1,  -1, -1):
+                    if random_value >= probabilities[i]:                        
+                        parents.append(winners[i])
+                        break
+            exec_line_son = self.crossover_solutions(parents[0], parents[1], n_cross_points, random_generator)
+
+            exec_line_son = self.mutate_solution(exec_line_son, n_mutations, random_generator)
+
+            self.solutions[index].set_baseline(self.project, self.jobs, exec_line_son)
+        
+        # After getting the children mutate the parents?
+
+        # After all children were created, then re sort the poblation
+        self.__sort_poblation__()
 
     def crossover_solutions(self, exec_line_0, exec_line_1, n_points, random_generator):
         """This function is in order to create a new execution line based on the two execution lines given. It return the new execution line.
