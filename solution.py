@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 1.0
+Version: 1.1
 """
 
 import numpy as np
@@ -64,19 +64,20 @@ class Solution():
                 break
             else:
                 if exec_line:
-                    print("The crossover and mutation of two individuals lead to an invalid solution, then it will be created a new one from zeros")
                     creator = lambda: Schedule(project, job_params) 
                 elif i == self.tolerance - 1:
                     raise InterruptedError("There was a invalid solution in the resources use, for that reason check the jobs resource use and total available resources in the project.")
 
-    def make_scenarios(self, project, job_params):
+    def make_scenarios(self, project, job_params, n_scenarios = None):
         """This function is in order to make the number of scenarios given for this solution using the created base line. This method can be only executed after a base line is setted in the solution instance object.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
+            n_scenarios (Int): An integer indicating how many scenarios must be recreated using the base line.
         """
         self.scenarios = []
-        for _ in range(self.n_scenarios):
+        total = n_scenarios if n_scenarios else self.n_scenarios
+        for _ in range(total):
             self.scenarios.append(Schedule(project, job_params, self.base_line.execution_line))
 
     def set_baseline(self, project, job_params, exec_line = None):
