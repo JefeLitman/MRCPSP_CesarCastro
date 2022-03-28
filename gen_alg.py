@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.0
+Version: 1.1
 """
 
 import numpy as np
@@ -151,7 +151,12 @@ class Genetic_Algorithm():
                     if random_value >= probabilities[i]:                        
                         parents.append(winners[i])
                         break
-            exec_line_son = self.crossover_solutions(parents[0], parents[1], n_cross_points, random_generator)
+            exec_line_son = self.crossover_solutions(
+                parents[0].base_line.execution_line, 
+                parents[1].base_line.execution_line, 
+                n_cross_points, 
+                random_generator
+            )
 
             exec_line_son = self.mutate_solution(exec_line_son, n_mutations, random_generator)
 
