@@ -1,11 +1,12 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 0.2
+Version: 0.3
 """
 
 import numpy as np
-from solution import Solution
 import utils.jobs as uj
+from copy import copy
+from solution import Solution
 
 class Genetic_Algorithm():
     
@@ -29,6 +30,7 @@ class Genetic_Algorithm():
         self.n_total_sol = poblation_size
         self.n_winners = n_winners
 
+        self.project = project
         self.initial_job = uj.get_initial_job(project["jobs"])
         self.final_job = uj.get_final_job(project["jobs"])
         self.__set_job_list__(project["jobs"])
@@ -40,27 +42,25 @@ class Genetic_Algorithm():
             self.solutions.append(
                 Solution(project, self.jobs, n_scenarios_sol, tol_invalid_sch)
             )
+        self.__sort_poblation__()
 
-    def escoger_ganadores(self):
-        """Esta funcion ordena la poblacion entera por puntuacion"""
-        self.poblacion = sorted(self.poblacion,key=lambda objeto: objeto.puntuacion)
+    def __sort_poblation__(self):
+        """This function set the metrics first in the poblation like mean and std makespan, order from lower to higher the difference in the makespan and the mean makespan and finally compute the metrics for every solution in the poblation. It doesn't return nothing."""
+        makespans = [i.mean_makespan for i in self.solutions]
+        self.mean_makespan = np.mean(makespans)
+        self.std_makespan = np.std(makespans)
+        self.solutions = sorted(self.solutions, key = lambda s: np.abs(s.mean_makespan - self.mean_makespan))
 
-    def ordenar_poblacion(self):
-        self.poblacion = sorted(self.poblacion,key=lambda objeto: objeto.indice)
-
-    def actualizar_mejor(self):
-        if(self.poblacion[0].puntuacion <= self.mejor_puntaje):
-            self.mejor_puntaje = self.poblacion[0].puntuacion
-            self.mejor_poblacion = (self.poblacion[0].indice,self.iteracion)
-
-    def activar_individuos(self,punto_final,mapa):
-        """punto_final es la coordenada en el mapa seleccionada por el usuario
-        entregada en forma de lista [Xf,Yf]"""
-        for ind in self.poblacion:
-            if( ind.vivo == True):
-                ind.mover(punto_final)
-                if(ind.lugar_valido(mapa) == False):
-                    ind.matar()
+    def __min_max_scaler__(self, X, new_min, new_max):
+        """This function transform the values of X to the new range given by new_min and new_max and return the transformed values. This function is the same as scalate the values without altering its distribution.
+        Args:
+            X (List or np.Array): A list or numpy array with the values to be changed in the new range.
+            new_min (Float): The new min value that the data X will have after the transformation.
+            new_max (Float): The new max value that the data X will have after the transformation.
+        """
+        X_std = (X - np.min(X)) / (np.max(X) - np.min(X))
+        X_scaled = X_std * (new_max - new_min) + new_min
+        return X_scaled
 
     def evolucionar_poblacion(self):
         """Funcion que se encarga de evolucionar toda la poblacion a la sig
@@ -115,39 +115,6 @@ class Genetic_Algorithm():
         self.ordenar_poblacion()
         self.iteracion = self.iteracion + 1
         return True
-
-    def cruzar_individuos(self,padre,madre,indice):
-        """Funcion que realiza el cruzado, el padre es de quien mas
-        heredara"""
-        hijo = carro(indice)
-
-        for i in range(len(hijo.cerebro.red_neuronal)):
-            divisor = np.random.randint(1,padre.cerebro.red_neuronal[i].W.shape[1])
-
-            w_padre = padre.cerebro.red_neuronal[i].W[:,:divisor]
-            w_madre = madre.cerebro.red_neuronal[i].W[:,divisor:]
-            b_padre = padre.cerebro.red_neuronal[i].b[:,:divisor]
-            b_madre = madre.cerebro.red_neuronal[i].b[:,divisor:]
-
-            hijo.cerebro.red_neuronal[i].W = np.append(w_padre,w_madre,axis=1)
-            hijo.cerebro.red_neuronal[i].b = np.append(b_padre, b_madre, axis=1)
-
-        return hijo
-
-    def mutar_individuo(self,individuo):
-        """Esta funcion muta los w y b del individuo en cada capa
-        No retorna nada porque supuestamente debe modificar el individuo original"""
-        for capa in individuo.cerebro.red_neuronal:
-            self.mutar_variable(capa.W)
-            self.mutar_variable(capa.b)
-
-    def mutar_variable(self,variable):
-        """Esta funcion muta cada elemento de la variable tomando probabilidad aleatoria
-        No retorna nada porque supuestamente debe modificar la variable original"""
-        for i in range(variable.shape[0]):
-            for j in range(variable.shape[1]):
-                if(np.random.random() < self.radio_mutacion):
-                    variable[i,j] = variable[i,j] * np.random.random()
 
     def __set_job_list__(self, jobs):
         """This function set the dictionary of all the jobs in the project. This dictionary doesn't take into account the modes for the jobs but instead only focus in summarize the general parameters accross the scenearios like the risks and distribution params in the value elements.
@@ -218,3 +185,86 @@ class Genetic_Algorithm():
             n_cross_points (Int): An integer indicating how many points will be taking to crossover two parents randomly selected.
             n_mutations (Int): An integer indicating how many mutation tries must be executed by every job per solution. The mutations will be only to change the mode of the job.
         """
+        for i in prob_ranges:
+            if i <= 0 or i >=1:
+                raise AssertionError("The range of probabilities must be between 0 and 1 (not included) to let all the winners participate in the tournament to be selected as father. Prob range given: {}".format(prob_ranges))
+        # The poblation is already ordered and will be ordered at the last moment
+        winners = self.solutions[:self.n_winners]
+        probabilities = self.__min_max_scaler__(
+            [np.abs(s.mean_makespan - self.mean_makespan) for s in winners], 
+            min(prob_ranges), 
+            max(prob_ranges)
+        )
+
+    def crossover_solutions(self, exec_line_0, exec_line_1, n_points, random_generator):
+        """This function is in order to create a new execution line based on the two execution lines given. It return the new execution line.
+        Args:
+            exec_line_0 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            exec_line_1 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            n_points (Int): An integer indicating how many points will be taking to make the crossover operation.
+            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+        """
+        assert len(exec_line_0) == len(exec_line_1) and len(exec_line_0) > 3
+        n_jobs = len(exec_line_1)
+        assert n_points < int(n_jobs / 2) and n_points > 0
+        prob = lambda: random_generator.cdf(random_generator.rvs())
+        crossover_points = [(0, int(prob()*2))] # List of tuples with (start_index, parent)
+        while len(crossover_points) < n_points + 1:
+            index = int(prob()*n_jobs)
+            next_parent = (crossover_points[-1][1] + 1) % 2
+            if index > crossover_points[-1][0]:
+                if len(crossover_points) < n_points and index != n_jobs - 1: 
+                    crossover_points.append((index, next_parent))
+                elif len(crossover_points) == n_points:
+                    crossover_points.append((index, next_parent))
+        crossover_points += [(n_jobs - 1, None)]
+        
+        exec_line = []
+        for i in range(len(crossover_points) - 1):
+            start_point, parent_index = crossover_points[i]
+            end_point, _ = crossover_points[i + 1]
+            parent = locals()["exec_line_{}".format(parent_index)]
+            self.__add_no_repeated_jobs__(exec_line, parent, start_point, end_point - start_point)
+
+        exec_line.append(parent[-1]) # Add at the end the last fictional job
+        assert len(exec_line) == n_jobs
+        return exec_line
+
+    def __add_no_repeated_jobs__(self, exec_line, parent, start_index, n_add):
+        """This function add the quantity of end_index - start_jobs in the exec line using all the jobs in the parent until the quantity of jobs is accomplished. It return None but modify the exec_line element
+        Args:
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be added from parent.
+            parent (List[Str]): A List of strings from the parent in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            start_index (Int): An integer indicating the index in which the parent jobs will start to add.
+            n_add (Int): An integer indicating how many jobs will be added from the parent to exec_line.
+        """
+        jobs = [int(job_string.split('.')[0]) for job_string in exec_line]
+        jobs_to_add = []
+        index = start_index
+        while len(jobs_to_add) < n_add:
+            job_id, _ = [int(i) for i in parent[index].split('.')]
+            if job_id not in jobs:
+                jobs_to_add.append(parent[index])
+                jobs.append(job_id)
+            index = (index + 1) % (len(parent) - 1) # Exclude the last job 
+        exec_line += jobs_to_add
+
+    def mutate_solution(self, exec_line, mutations, random_generator):
+        """This function alters each job in the execution line (ignoring the first and last) changing its modes by a random probabilitie in each job. It return the new mutated execution line.
+        Args:
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            mutations (Int): An integer indicating how many mutation tries must be executed by every job per solution. The mutations will be only to change the mode of the job.
+            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+        """
+        mutated_exec_line = copy(exec_line)
+        prob = lambda: random_generator.cdf(random_generator.rvs())
+        for i, job_string in enumerate(exec_line):
+            job_id, _ = [int(i) for i in job_string.split('.')]
+            if job_id not in [self.initial_job, self.final_job]:
+                mutation_ratio = prob()
+                modes = list(uj.get_job_modes_duration(self.project["jobs"], job_id).keys())
+                for _ in range(mutations):
+                    if prob() < mutation_ratio:
+                        index = int(prob()*len(modes))
+                        mutated_exec_line[i] = "{}.{}".format(job_id, modes[index])
+        return mutated_exec_line
