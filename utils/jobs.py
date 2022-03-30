@@ -1,15 +1,15 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.4.1
+Version: 1.4.2
 Job Dict Structure:
     {
         "id": Integer
         "mode": Integer
         "base_duration": Integer
         "successors": List[Int]
-        "renewable_resources_use": np.Array[Int]
-        "nonrenewable_resources_use": np.Array[Int]
-        "doubly_constrained_use": np.Array[Int],
+        "renewable_resources_use": List[Int]
+        "nonrenewable_resources_use": List[Int]
+        "doubly_constrained_use": List[Int],
         "normal_dist_mean": Float,
         "normal_dist_std": Float,
         "init_random_duration": Integer,
