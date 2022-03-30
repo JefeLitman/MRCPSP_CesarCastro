@@ -1,6 +1,6 @@
 """This file contains code to load the csv files for the MRCPSP problem
 Created by: Edgar RP
-Version: 1.0.2
+Version: 1.1
 """
 
 import os
@@ -60,16 +60,16 @@ def load_project(example_path):
   for key, acronim in resources_key_acronim:
     resources[key] = []
     for index in range(1, params[key].to_numpy()[0] + 1):
-      resources[key].append(params["{}{}_available".format(acronim, index)].to_numpy()[0])
+      resources[key].append(int(params["{}{}_available".format(acronim, index)].to_numpy()[0]))
 
   project = {
-    "nr_jobs": params["#jobs"].to_numpy()[0],
-    "time_horizon": params["time_horizon"].to_numpy()[0],
-    "init_random_value": params["init_random_value"].to_numpy()[0],
-    "rel_date": params["rel_date"].to_numpy()[0],
-    "duedate": params["duedate"].to_numpy()[0],
-    "tardcost": params["tardcost"].to_numpy()[0],
-    "MPM-Time": params["MPM-Time"].to_numpy()[0],
+    "nr_jobs": int(params["#jobs"].to_numpy()[0]),
+    "time_horizon": int(params["time_horizon"].to_numpy()[0]),
+    "init_random_value": int(params["init_random_value"].to_numpy()[0]),
+    "rel_date": int(params["rel_date"].to_numpy()[0]),
+    "duedate": int(params["duedate"].to_numpy()[0]),
+    "tardcost": int(params["tardcost"].to_numpy()[0]),
+    "MPM-Time": int(params["MPM-Time"].to_numpy()[0]),
     "renewable_resources_total": tuple(resources["renewable_resources"]),
     "nonrenewable_resources_total": tuple(resources["nonrenewable_resources"]),
     "doubly_constrained_total": tuple(resources["doubly_constrained"]),
@@ -82,7 +82,7 @@ def load_project(example_path):
       resources[key] = []
       for i in range(1, params[key].to_numpy()[0] + 1):
         resources[key].append(
-          duration_modes.loc[index, "{}{}".format(acronim, i)]
+          int(duration_modes.loc[index, "{}{}".format(acronim, i)])
         )
 
     successors = precedences.loc[duration_modes.loc[index, "jobnr"] - 1, "successors"]
@@ -92,13 +92,13 @@ def load_project(example_path):
       successors = [int(i) for i in successors.split(" ")]
 
     job = {
-      "id": duration_modes.loc[index, "jobnr"],
-      "mode": duration_modes.loc[index, "mode"],
-      "base_duration": duration_modes.loc[index, "duration"],
+      "id": int(duration_modes.loc[index, "jobnr"]),
+      "mode": int(duration_modes.loc[index, "mode"]),
+      "base_duration": int(duration_modes.loc[index, "duration"]),
       "successors": successors,
-      "renewable_resources_use": np.r_[resources["renewable_resources"]],
-      "nonrenewable_resources_use": np.r_[resources["nonrenewable_resources"]],
-      "doubly_constrained_use": np.r_[resources["doubly_constrained"]]
+      "renewable_resources_use": resources["renewable_resources"],
+      "nonrenewable_resources_use": resources["nonrenewable_resources"],
+      "doubly_constrained_use": resources["doubly_constrained"]
     }
     project["jobs"].append(job)
 
