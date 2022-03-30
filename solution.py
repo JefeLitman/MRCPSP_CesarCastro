@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 1.1
+Version: 1.1.1
 """
 
 import numpy as np
@@ -30,7 +30,7 @@ class Solution():
             schedule (Schedule): Instance of the class schedule that contains and execution_line and a time_line.
             jobs (List[Dict]): A list of dictionary of each job in its raw format.
         """
-        valid = True
+        valid = len(schedule.execution_line) == len(schedule.time_line) == schedule.total_jobs
         self.renewable_resources_use = np.zeros_like(self.renewable_resources_total)
         self.nonrenewable_resources_use = np.zeros_like(self.nonrenewable_resources_total)
         self.doubly_constrained_use = np.zeros_like(self.doubly_constrained_total)
@@ -41,9 +41,10 @@ class Solution():
             self.nonrenewable_resources_use += job["nonrenewable_resources_use"]
             self.doubly_constrained_use += job["doubly_constrained_use"]
 
-            for i in range(len(self.nonrenewable_resources_use)):
-                valid = valid and \
-                    self.nonrenewable_resources_use[i] <= self.nonrenewable_resources_total[i]
+            # Disabling the validation of non renewable resources, but the code will be stay available
+            # for i in range(len(self.nonrenewable_resources_use)):
+            #     valid = valid and \
+            #         self.nonrenewable_resources_use[i] <= self.nonrenewable_resources_total[i]
             for i in range(len(self.renewable_resources_use)):
                 valid = valid and \
                     job["renewable_resources_use"][i] <= self.renewable_resources_total[i]
