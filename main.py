@@ -1,8 +1,9 @@
 """This file is the principal and only file that must be executed to run the program. This project contain the logic to solve with an Genetic Algorithm the MRCPSP problem. In this file is where you can edit all the hyperparameters to the algorithm to make the execution. Some other parameters as optimization rules can be edited in the schedule.py file.
 Created by: Edgar RP
-Version: 1.0
+Version: 1.1
 """
 
+import os
 import time
 import numpy as np
 from tqdm import tqdm
@@ -11,7 +12,8 @@ from gen_alg import Genetic_Algorithm
 from utils.data_loader import load_project
 
 random_seed = None
-project = load_project("./data/j3010_1/")
+project = load_project("./data/j301_2")
+experiment_name = "j301_2"
 if not random_seed:
     np.random.seed(project["init_random_value"])
 else:
@@ -20,16 +22,24 @@ random_generator = stats.norm(loc = 0, scale = 1)
 n_jobs_with_risks = 10
 risks_per_job = (0.5, 0.4, 0.3)
 n_scenarios_per_solution = 10
-n_scenarios_final = 1000 
+n_scenarios_final = 100
 tolerance_x_invalid_schedule = 10
-poblation_size = 20
+poblation_size = 10
 n_winners_x_generation = 4
 parents_prob_range = (0.8, 0.2)
 n_cross_points = 1
 n_mutations = 1
-n_generations = 100
+n_generations = 10
 
 if __name__ == "__main__":
+    # Create the results folder where the experiments will be saved
+    results_folder = "./results"
+    if not os.path.isdir(results_folder):
+        os.mkdir(results_folder)
+    experiment_path = os.path.join(results_folder, experiment_name)
+    if not os.path.isdir(experiment_path):
+        os.mkdir(experiment_path)
+
     start = time.time()
     gen_alg = Genetic_Algorithm(
             project,
