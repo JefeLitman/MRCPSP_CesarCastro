@@ -1,6 +1,6 @@
 """This file is the principal and only file that must be executed to run the program. This project contain the logic to solve with an Genetic Algorithm the MRCPSP problem. In this file is where you can edit all the hyperparameters to the algorithm to make the execution. Some other parameters as optimization rules can be edited in the schedule.py file.
 Created by: Edgar RP
-Version: 1.1
+Version: 1.2
 """
 
 import os
@@ -69,10 +69,14 @@ if __name__ == "__main__":
     Mean makespan: {mm}
     Std makespan: {sm}
     Solution Robustness: {sr}
-    Quality Robustness: {qr}""".format(
+    Quality Robustness: {qr}
+    Execution Line: {el}
+    Time Line: {tl}""".format(
         m = best_solution.makespan,
         mm = best_solution.mean_makespan,
         sm = best_solution.std_makespan,
         sr = best_solution.robustness,
-        qr = best_solution.quality
+        qr = best_solution.quality,
+        el = best_solution.base_line.execution_line,
+        tl = best_solution.base_line.time_line
     ))
