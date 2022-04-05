@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line and time line of jobs to do.
 Created by: Edgar RP
-Version: 1.1
+Version: 1.1.1
 """
 
 import numpy as np
@@ -33,9 +33,17 @@ class Schedule():
             jobs (List[Dict]): A list of dictionary of each job.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
         """
+        dependencies = {}
+        for i in range(self.initial_job, self.final_job + 1):
+            dependencies[i] = []
         self.job_list = []
         for job in jobs:
             job_id = job["id"]
+
+            for ji in job["successors"]:
+                if job_id not in dependencies[ji]:
+                    dependencies[ji].append(job_id)
+
             if job_id not in [self.initial_job, self.final_job]:
                 mean = jobs_params[job_id]["normal_dist_mean"]
                 std = jobs_params[job_id]["normal_dist_std"]
@@ -60,8 +68,11 @@ class Schedule():
                 self.job_list.append({
                     "id": job_id,
                     "mode": job["mode"],
-                    "successors": job["successors"],
+                    "successors": job["successors"]
                 })
+
+        for i in range(len(self.job_list)):
+            self.job_list[i]["dependencies"] = dependencies[self.job_list[i]["id"]]
 
     def build_schedule(self, execution_line = None):
         """This function build the execution timeline for the schedule using the job_list in the object. This function is an intermediary between seeing when a job is finished, what job is started and how is the resources used. It returns nothing but set the timeline and execution line for the schedule where the execution line contain the order from beginning to end of every job with its mode formmated like <job_id>.<mode> in a list and the timeline is also a list in the same order as execution line containing the start time for every job.
@@ -70,9 +81,18 @@ class Schedule():
         """
         #First it must be executed the initial job
         done = [(self.initial_job, 1, 0)] # (job_id, job_mode, start_tick)
+        doing = [] # (job_id, job_mode, start_tick)
         to_do = self.__get_available_jobs__(done)
         time = 0
         if execution_line == None:
+            for tick in range(self.total_time):
+                if len(to_do) != 0:
+                    job_id, job_mode = self.__select_best_job__(to_do)
+                    doing += [(job_id, job_mode, time)]
+                    to_do.pop(to_do.index((job_id, job_mode)))
+                    # aqui estoy
+                else:
+                    break
             while time < self.total_time:
                 if len(done) < self.total_jobs - 1:
                     job_id, job_mode = self.__select_best_job__(to_do)
@@ -118,14 +138,20 @@ class Schedule():
         to_do = []
         done_ids = [i[0] for i in done_jobs]
         for job_id, job_mode , _ in done_jobs:
-            successors = uj.get_job(self.job_list, job_id, job_mode)["successors"]
-            for suc_id in successors:
-                if suc_id != self.final_job and suc_id not in done_ids:
-                    modes = uj.get_job_modes_duration(self.job_list, suc_id).keys()
-                    to_do += [(suc_id, i, job_id) for i in modes]
-                elif suc_id == self.final_job:
-                    to_do += [(self.final_job, 1, job_id)]
+            job = uj.get_job(self.job_list, job_id, job_mode)
+            candidates = job["successors"]
+            dependencies = job["dependencies"]
+            for can_id in candidates:
+                is_feasible = True
+                for dep_id in dependencies:
+                    is_feasible = is_feasible and (dep_id in done_ids)
+                if is_feasible:
+                    modes = uj.get_job_modes_duration(self.job_list, can_id).keys()
+                    to_do += [(can_id, i) for i in modes]
         return to_do
+
+    def __get_finished_jobs__(self, doing_jobs, actual_time):
+        pass
 
     def __select_best_job__(self, to_do_jobs):
         """This function apply the optimization rules to select the best following job to do and return a List with [job_id, job_mode] to be executed in the project.
@@ -138,7 +164,7 @@ class Schedule():
             lambda job: np.sum(job["nonrenewable_resources_use"]),
             lambda job: np.sum(job["renewable_resources_use"]),
         )
-        for job_id, job_mode, _ in to_do_jobs:
+        for job_id, job_mode in to_do_jobs:
             if job_id != self.final_job:
                 jobs.append(uj.get_job(self.job_list, job_id, job_mode))
 
@@ -151,4 +177,4 @@ class Schedule():
                 jobs = sorted(jobs, key=optimization_rules[i])[:-1]
 
         best_job = jobs[0]
-        return [best_job["id"], best_job["mode"]]
+        return best_job["id"], best_job["mode"]
