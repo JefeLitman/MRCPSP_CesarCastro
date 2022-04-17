@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.2
+Version: 1.3
 """
 
 import numpy as np
@@ -33,7 +33,7 @@ class Genetic_Algorithm():
         self.project = project
         self.initial_job = uj.get_initial_job(project["jobs"])
         self.final_job = uj.get_final_job(project["jobs"])
-        self.__set_jobs_risks__(project["jobs"], n_jobs_risks, risks_per_job, random_generator)
+        self.__set_jobs_params__(project["jobs"], n_jobs_risks, risks_per_job, random_generator)
         
         self.solutions = []
         for _ in range(poblation_size):
@@ -60,14 +60,18 @@ class Genetic_Algorithm():
         X_scaled = X_std * (new_max - new_min) + new_min
         return X_scaled
 
-    def __set_jobs_risks__(self, jobs, n_jobs, risks_per, random_generator):
-        """This function set the params and risks for every job in the solution given the n_jobs with risks and risk_per job.
+    def __set_jobs_params__(self, jobs, n_jobs, risks_per, random_generator):
+        """This function set the params, predecessor and risks for every job in the solution given the n_jobs with risks and risk_per job.
         Args:
             jobs (List[Dict]): A list of dictionary of each job.
             n_jobs (Integer): Quantity of jobs which will have risks.
             risks_per (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
             random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
         """
+        dependencies = {}
+        for i in range(self.initial_job, self.final_job + 1):
+            dependencies[i] = []
+
         self.jobs = {}
         for job in jobs:
             job_id = job["id"]
@@ -82,8 +86,22 @@ class Genetic_Algorithm():
                 self.jobs[job_key] = {
                     "base_duration": job["base_duration"],
                     "normal_dist_mean": job["base_duration"],
-                    "normal_dist_std": job["base_duration"] * 0.3
+                    "normal_dist_std": job["base_duration"] * 0.3,
+                    "renewable_resources_use": job["renewable_resources_use"],
+                    "nonrenewable_resources_use": job["nonrenewable_resources_use"],
+                    "doubly_constrained_use": job["doubly_constrained_use"]
                 }
+
+            for ji in job["successors"]:
+                if job_id not in dependencies[ji]:
+                    dependencies[ji].append(job_id)
+        
+        for job in jobs:
+            job_id = job["id"]
+            job_mode = job["mode"]
+            job_key = "{}.{}".format(job_id, job_mode)
+            self.jobs[job_key]["predecessors"] = dependencies[job_id]
+            self.jobs[job_key]["successors"] = job["successors"]
 
         jobs_modified = []
         prob = lambda: random_generator.cdf(random_generator.rvs())
@@ -147,8 +165,6 @@ class Genetic_Algorithm():
             exec_line_son = self.mutate_solution(exec_line_son, n_mutations, random_generator)
 
             self.solutions[index].set_baseline(self.project, self.jobs, exec_line_son)
-        
-        # After getting the children mutate the parents?
 
         # After all children were created, then re sort the poblation
         self.__sort_poblation__()
