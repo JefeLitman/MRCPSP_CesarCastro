@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.3
+Version: 1.3.1
 """
 
 import numpy as np
@@ -35,12 +35,12 @@ class Genetic_Algorithm():
         self.final_job = uj.get_final_job(project["jobs"])
         self.__set_jobs_params__(project["jobs"], n_jobs_risks, risks_per_job, random_generator)
         
-        self.solutions = []
-        for _ in range(poblation_size):
-            self.solutions.append(
-                Solution(project, self.jobs, n_scenarios_sol, tol_invalid_sch)
-            )
-        self.__sort_poblation__()
+        # self.solutions = []
+        # for _ in range(poblation_size):
+        #     self.solutions.append(
+        #         Solution(project, self.jobs, n_scenarios_sol, tol_invalid_sch)
+        #     )
+        # self.__sort_poblation__()
 
     def __sort_poblation__(self):
         """This function set the metrics first in the poblation like mean and std makespan, order from lower to higher the difference in the makespan and the mean makespan and finally compute the metrics for every solution in the poblation. It doesn't return nothing."""
@@ -116,6 +116,7 @@ class Genetic_Algorithm():
                     is_none = is_none and risks[r] == None
                     for job_mode in uj.get_job_modes_duration(jobs, job_id):
                         job_key = "{}.{}".format(job_id, job_mode)
+                        self.jobs[job_key]["used_for_risks"] = job_key == job_str
                         self.jobs[job_key][r] = risks[r]
                 if not is_none:
                     jobs_modified.append(job_id)
@@ -126,6 +127,7 @@ class Genetic_Algorithm():
             if job_id not in [self.initial_job, self.final_job] + jobs_modified:
                 risks = uj.get_job_risks(np.zeros_like(risks_per), 0)
                 for r in risks:
+                    self.jobs[job_str]["used_for_risks"] = False
                     self.jobs[job_str][r] = risks[r]
 
     def evolve_poblation(self, prob_ranges, n_cross_points, n_mutations, random_generator):
