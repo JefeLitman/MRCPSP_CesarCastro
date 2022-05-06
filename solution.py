@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 1.1.1
+Version: 1.1.2
 """
 
 import numpy as np
@@ -9,12 +9,14 @@ import utils.metrics as um
 from schedule import Schedule
 class Solution():
     
-    def __init__(self, project, job_params, n_scenarios_sol, tol_invalid_sch = 10):
+    def __init__(self, project, job_params, n_scenarios_sol, initial_job, final_job, tol_invalid_sch = 10):
         """When you create a solution for the project, it generate multiples scenarios where each one have its own makespan and the same execution_line of the base line schedule but share across scenarios the risks and distribution params (mean, std) by job in all the modes. Every schedule use the priority policies to generate its own execution line.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             job_params (Dict): A dictionary with keys as jobs_ids and values contain the risk and distribution parameters (mean and std) for that job.
             n_scenarios_job (Int): Number of scenarios per solution, an integer indicating how many scenarios must be created using the base line to obtain the mean makespan.
+            initial_job (Int): Integer indicating the id of the initial job of the project.
+            final_job (Int): Integer indicating the id of the final job of the project.
             tol_invalid_sch (Int): Tolerance of invalid schedules created, an integer indicating how many retries it can until to get a valid schedule solution.
         """
         self.renewable_resources_total = project["renewable_resources_total"]
