@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line, time line and duration of jobs to do.
 Created by: Edgar RP
-Version: 1.2
+Version: 1.2.1
 """
 
 import numpy as np
@@ -35,6 +35,17 @@ class Schedule():
 
         #self.set_jobs_duration(project["jobs"], job_params)
         self.__build_schedule__(execution_line)
+
+    def __shuffle_jobs__(self, job_params):
+        """This function shuffle the available jobs excepting the initial and final job for schedules created without an execution_line given
+        Args:
+            job_params (Dict): A dictionary with keys as <jobs_id>_<job_mode> and values contain the risk and distribution parameters (mean and std) for that job.
+        """
+        self.job_list = []
+        for job_str in job_params:
+            job_id, job_mode = [int(i) for i in job_str.split(".")]
+            if job_id not in [self.initial_job, self.final_job]:
+                pass
 
     def __build_schedule__(self, execution_line = None):
         """This function build the execution timeline for the schedule using the job_list in the object. This function is an intermediary between seeing when a job is finished, what job is started and how is the resources used. It returns nothing but set the timeline and execution line for the schedule where the execution line contain the order from beginning to end of every job with its mode formmated like <job_id>.<mode> in a list and the timeline is also a list in the same order as execution line containing the start time for every job.
