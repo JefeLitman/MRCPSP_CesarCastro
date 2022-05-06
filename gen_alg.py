@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.3.1
+Version: 1.3.2
 """
 
 import numpy as np
@@ -111,13 +111,20 @@ class Genetic_Algorithm():
             job_id = int(job_str.split(".")[0])
             if job_id not in [self.initial_job, self.final_job] + jobs_modified:
                 risks = uj.get_job_risks(risks_per, self.jobs[job_str]["base_duration"])
-                is_none = True
                 for r in risks:
                     is_none = is_none and risks[r] == None
                     for job_mode in uj.get_job_modes_duration(jobs, job_id):
                         job_key = "{}.{}".format(job_id, job_mode)
-                        self.jobs[job_key]["used_for_risks"] = job_key == job_str
-                        self.jobs[job_key][r] = risks[r]
+                        if is_none:
+                            self.jobs[job_key][r] = None 
+                        else:
+                            if job_key == job_str:
+                                self.jobs[job_key][r] = risks[r]
+                            else:
+                                self.jobs[job_key][r] = uj.get_job_risk_dist(
+                                    self.jobs[job_key]["base_duration"]
+                                ).rvs()
+
                 if not is_none:
                     jobs_modified.append(job_id)
 
@@ -127,7 +134,7 @@ class Genetic_Algorithm():
             if job_id not in [self.initial_job, self.final_job] + jobs_modified:
                 risks = uj.get_job_risks(np.zeros_like(risks_per), 0)
                 for r in risks:
-                    self.jobs[job_str]["used_for_risks"] = False
+                    #self.jobs[job_str]["used_for_risks"] = False
                     self.jobs[job_str][r] = risks[r]
 
     def evolve_poblation(self, prob_ranges, n_cross_points, n_mutations, random_generator):
