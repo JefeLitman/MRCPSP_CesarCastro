@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.5.1
+Version: 1.5.2
 Job Dict Structure:
     {
         "id": Integer
@@ -103,7 +103,7 @@ def get_job_risk_dist(base_duration):
     """
     return stats.norm(loc=base_duration*0.5, scale=base_duration*0.5*0.2)
 
-def get_job_risks(risks_per_job, base_duration):
+def get_job_risks(risks_per_job, base_duration): #Aqui debo pedir el random_generator que sera el uniforme
     """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
     {
         "risk_1": Float,
