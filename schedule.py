@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line, time line and duration of jobs to do.
 Created by: Edgar RP
-Version: 1.2.1
+Version: 1.3
 """
 
 import numpy as np
@@ -8,11 +8,12 @@ import utils.jobs as uj
 
 class Schedule():
     
-    def __init__(self, project, job_params, initial_job = None, final_job = None, execution_line = None):
+    def __init__(self, project, random_generator, job_params, initial_job = None, final_job = None, execution_line = None):
         """When you create a project schedule, it generates a schedule containing all the jobs in a sequential way executed in any mode and also add the random duration for risk and no risk duration.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
-            job_params (Dict): A dictionary with keys as <jobs_id>_<job_mode> and values contain the risk and distribution parameters (mean and std) for that job.
+            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+            job_params (List[Dict]): A list of dictionaries containing all the jobs in all the modes formatted to be used as the job_list in the schedule object.
             initial_job (Int): Integer indicating the id of the initial job of the project.
             final_job (Int): Integer indicating the id of the final job of the project.
             execution_line (List[Str]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
@@ -22,6 +23,7 @@ class Schedule():
                 raise ValueError('The initial and final job must not be empty when an execution line is not given')
             self.initial_job = initial_job
             self.final_job = final_job
+            self.__shuffle_jobs__(job_params, random_generator)
         else:
             self.initial_job = int(execution_line[0].split(".")[0])
             self.final_job = int(execution_line[-1].split(".")[0])
@@ -32,20 +34,22 @@ class Schedule():
         self.nonrenewable_resources_total = project["nonrenewable_resources_total"]
         self.doubly_constrained_total = project["doubly_constrained_total"]
         self.job_list = job_params
-
-        #self.set_jobs_duration(project["jobs"], job_params)
         self.__build_schedule__(execution_line)
 
-    def __shuffle_jobs__(self, job_params):
-        """This function shuffle the available jobs excepting the initial and final job for schedules created without an execution_line given
+    def __shuffle_jobs__(self, job_params, random_generator):
+        """This function shuffle the available jobs excepting the initial and final job for schedules created without an base schedule given. It doesn't return nothing but instead set the variable job_order.
         Args:
-            job_params (Dict): A dictionary with keys as <jobs_id>_<job_mode> and values contain the risk and distribution parameters (mean and std) for that job.
+            job_params (List[Dict]): A list of dictionaries containing all the jobs in all the modes formatted to be used as the job_list in the schedule object.
+            random_generatorandom_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
         """
-        self.job_list = []
-        for job_str in job_params:
-            job_id, job_mode = [int(i) for i in job_str.split(".")]
-            if job_id not in [self.initial_job, self.final_job]:
-                pass
+        self.job_order = ["{}.1".format(self.initial_job), "{}.1".format(self.final_job)]
+        prob = lambda: random_generator.cdf(random_generator.rvs())
+        while len(self.job_order) < self.total_jobs: 
+            index = int(prob()*len(job_params))
+            job = job_params[index]
+            job_str = "{}.{}".format(job["id"], job["mode"])
+            if job_str not in self.job_order:
+                self.job_order.append(job_str)
 
     def __build_schedule__(self, execution_line = None):
         """This function build the execution timeline for the schedule using the job_list in the object. This function is an intermediary between seeing when a job is finished, what job is started and how is the resources used. It returns nothing but set the timeline and execution line for the schedule where the execution line contain the order from beginning to end of every job with its mode formmated like <job_id>.<mode> in a list and the timeline is also a list in the same order as execution line containing the start time for every job.
@@ -111,7 +115,8 @@ class Schedule():
         to_do = []
         done_ids = [i[0] for i in done_jobs]
         for job_id, job_mode , _ in done_jobs:
-            job = self.job_list['{}.{}',format(job_id, job_mode)]
+            job = uj.get_job(self.job_list, job_id, job_mode)
+            self.job_list['{}.{}',format(job_id, job_mode)]
             candidates = job["successors"]
             dependencies = job["predecessors"]
             for can_id in candidates:
