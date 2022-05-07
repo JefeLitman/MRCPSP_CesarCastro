@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.3.2
+Version: 1.3.3
 """
 
 import numpy as np
@@ -111,6 +111,7 @@ class Genetic_Algorithm():
             job_id = int(job_str.split(".")[0])
             if job_id not in [self.initial_job, self.final_job] + jobs_modified:
                 risks = uj.get_job_risks(risks_per, self.jobs[job_str]["base_duration"])
+                is_none = True
                 for r in risks:
                     is_none = is_none and risks[r] == None
                     for job_mode in uj.get_job_modes_duration(jobs, job_id):
