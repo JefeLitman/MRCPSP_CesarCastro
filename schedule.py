@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line, time line and duration of jobs to do.
 Created by: Edgar RP
-Version: 1.3.1
+Version: 1.4
 """
 
 import numpy as np
@@ -33,11 +33,11 @@ class Schedule():
             self.initial_job = initial_job
             self.final_job = final_job
             self.__shuffle_jobs__(job_params, random_generator)
-            #self.__build_schedule__()
         else:
             self.initial_job = base_line.initial_job
             self.final_job = base_line.final_job
             self.job_order = base_line.job_order
+        self.__build_schedule__()
 
     def __shuffle_jobs__(self, job_params, random_generator):
         """This function shuffle the available jobs excepting the initial and final job for schedules created without an base schedule given. It doesn't return nothing but instead set the variable job_order.
@@ -54,7 +54,7 @@ class Schedule():
             if job_str not in self.job_order:
                 self.job_order.append(job_str)
 
-    def __build_schedule__(self, execution_line = None):
+    def __build_schedule__(self):
         """This function build the execution timeline for the schedule using the job_list in the object. This function is an intermediary between seeing when a job is finished, what job is started and how is the resources used. It returns nothing but set the timeline and execution line for the schedule where the execution line contain the order from beginning to end of every job with its mode formmated like <job_id>.<mode> in a list and the timeline is also a list in the same order as execution line containing the start time for every job.
         Args:
             execution_line (List[Tuples]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed. If this parameter is given then the schedule only rebuilds the time_line variable.
@@ -62,19 +62,45 @@ class Schedule():
         #First it must be executed the initial job
         done = [(self.initial_job, 1, 0, 0)] # (job_id, job_mode, start_tick, job_duration)
         doing = [] # (job_id, job_mode, start_tick, job_duration)
-        time = 0
-        for tick in range(self.total_time):
+        for tick in range(self.total_time + 1):
             # Check for finished jobs
-            for i in range(len(doing)):
-                if self.__is_finished__(doing[i]):
-                    job_tuple = doing.pop(i)
+            to_delete = []
+            for index, job_tuple in enumerate(doing):
+                if self.__is_finished__(job_tuple):
+                    to_delete.append(index)
                     done.append(job_tuple)
+                    job = uj.get_job(self.job_list, job_tuple[0], job_tuple[1])
+                    self.renewable_resources_use -= job["renewable_resources_use"]
+
+            # Delete the finished jobs
+            for i in to_delete:
+                doing.pop(i)
+
             # Get all the available jobs with the finished jobs
             to_do = self.__get_available_jobs__(done)
 
             # Iterate over all available jobs until resources are busy
-            while len(to_do) > 0:
-                pass
+            to_delete = [] # (to_do_index, job_id)
+            for index, job in enumerate(to_do):
+                if job["id"] not in [i[1] for i in to_delete] and self.__is_feasible__(job):
+                    to_delete.append((index, job["id"]))
+                    job_duration = uj.get_total_job_duration(job)
+                    doing.append((job["id"], job["mode"], tick, job_duration))
+                    self.renewable_resources_use += job["renewable_resources_use"]
+                    self.nonrenewable_resources_use += job["nonrenewable_resources_use"]
+            
+            # Delete the scheduled jobs 
+            for i, _ in to_delete:
+                to_do.pop(i)
+            
+            # Break the for if the done jobs is equal to total_jobs
+            if len(done) == self.total_jobs:
+                break
+        
+        for job_tuple in done:
+            self.execution_line.append("{}.{}".format(job_tuple[0], job_tuple[1]))
+            self.time_line.append(job_tuple[2])
+            self.job_durations.append(job_tuple[3])
 
     def __get_available_jobs__(self, done_jobs):
         """This function is in charge to return an ordered List with job Dicts with the structure in utils/jobs.py following the order of job_order attribute given the jobs done.
@@ -113,11 +139,10 @@ class Schedule():
         
         needed_r_resources = job["renewable_resources_use"]
         needed_nr_resources = job["nonrenewable_resources_use"]
-        # Disabling the validation of non renewable resources, but the code will be stay available
-        for i in range(len(self.nonrenewable_resources_use)):
-            valid = valid and needed_nr_resources[i] <= available_nr_resources[i]
         for i in range(len(self.renewable_resources_use)):
             valid = valid and needed_r_resources[i] <= available_r_resources[i]
+        # for i in range(len(self.nonrenewable_resources_use)):
+        #     valid = valid and needed_nr_resources[i] <= available_nr_resources[i]
         return valid
 
     def __is_finished__(self, job_tuple, time_tick):
@@ -131,17 +156,3 @@ class Schedule():
             return True
         else:
             return False
-
-    def __can_use_more_resources__(self, to_do_jobs):
-        """This function check for every possible job if its possible to be programmed taking into account the actual use of resources. It returns True if its possible to program at least one job of the to_do_jobs list Dicts or False is there is no any job.
-        Args:
-            to_do_jobs (List[Dict]): A list of dictionaries of each job following the order of job_order attribute.
-        """
-        for job in to_do_jobs:
-            if self.__is_feasible__(job):
-                return True
-        return False
-
-    def __update_states__(self, time_tick, doing_jobs, done_jobs):
-        """This function is in construction"""
-
