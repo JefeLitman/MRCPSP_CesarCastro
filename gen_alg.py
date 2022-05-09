@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.3.3
+Version: 1.3.4
 """
 
 import numpy as np
@@ -14,7 +14,7 @@ class Genetic_Algorithm():
         """This class is the main class, it creates the quantity of solutons given, make crossover, mutation and select the best samples. This class contain important classes as to create a new generation and stablish the risks in the jobs.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+            random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
             poblation_size (Int): Quantity of solutions to have for generation.
             n_winners (Int): Quantity of solutions that will be taken into account as parents to generate the new sons. It can not be greater than poblation_size.
             n_jobs_risks (Int): Quantity of jobs which will have risks.
@@ -66,7 +66,7 @@ class Genetic_Algorithm():
             jobs (List[Dict]): A list of dictionary of each job.
             n_jobs (Integer): Quantity of jobs which will have risks.
             risks_per (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+            random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
         """
         dependencies = {}
         for i in range(self.initial_job, self.final_job + 1):
@@ -110,7 +110,7 @@ class Genetic_Algorithm():
             job_str = list(self.jobs.keys())[index]
             job_id = int(job_str.split(".")[0])
             if job_id not in [self.initial_job, self.final_job] + jobs_modified:
-                risks = uj.get_job_risks(risks_per, self.jobs[job_str]["base_duration"])
+                risks = uj.get_job_risks(risks_per, self.jobs[job_str]["base_duration"], random_generator)
                 is_none = True
                 for r in risks:
                     is_none = is_none and risks[r] == None
@@ -185,7 +185,7 @@ class Genetic_Algorithm():
             exec_line_0 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
             exec_line_1 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
             n_points (Int): An integer indicating how many points will be taking to make the crossover operation.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+            random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
         """
         assert len(exec_line_0) == len(exec_line_1) and len(exec_line_0) > 3
         n_jobs = len(exec_line_1)
@@ -237,7 +237,7 @@ class Genetic_Algorithm():
         Args:
             exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
             mutations (Int): An integer indicating how many mutation tries must be executed by every job per solution. The mutations will be only to change the mode of the job.
-            random_generator (scipy.stats.norm): Instance of scipy.stats.norm object to generate random values of the normal distribution.
+            random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
         """
         mutated_exec_line = copy(exec_line)
         prob = lambda: random_generator.cdf(random_generator.rvs())
