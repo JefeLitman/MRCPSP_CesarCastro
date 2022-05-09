@@ -1,6 +1,6 @@
 """This file contains code to calculate the metrics for solutions in the MRCPSP problem.
 Created by: Edgar RP
-Version: 1.1.1
+Version: 1.2
 """
 
 import numpy as np
@@ -37,7 +37,7 @@ def get_quality_robustness(base_line, scenarios):
     """
     __check_similirity__(base_line, scenarios)
     QR = 0
-    mean_makespan = np.mean([i.time_line[-1] for i in scenarios]) # Aqui tengo que usar ahora si la linea base
+    mean_makespan = base_line.time_line[-1]
     for sc in scenarios:
         QR += np.abs(mean_makespan - sc.time_line[-1])
     return QR / len(scenarios)
