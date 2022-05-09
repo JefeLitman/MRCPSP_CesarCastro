@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.6
+Version: 1.7
 Job Dict Structure:
     {
         "id": Integer
@@ -89,12 +89,19 @@ def get_final_job(jobs):
             return job["id"]
     raise ValueError("The project have a final job?")
 
-def get_new_job_base_duration(duration):
-    """This function return a new randomly duration for the duration given using the mean and std. If the duration is 1 it will add always more time.
+def get_total_job_duration(job):
+    """This function return the new total duration when it adds the new base duration and sum every risk of the given job dict. It will return the duration approximated to the nearest integer.
     Args:
-        duration (Integer): A value specifying the duration to change.
+        job (Dict): A dictionary of a job with the structure showed in jobs.py.
     """ 
-    return stats.norm.rvs(loc=duration, scale=duration * 0.3)
+    duration = job["base_duration"]
+    new_base_duration = stats.norm.rvs(loc=duration, scale=duration * 0.3)
+    risks = 0
+    for key in job:
+        if key.startswith("risk_"):
+            if job[key] != None:
+                risks += job[key]
+    return np.rint(new_base_duration + risks)
 
 def get_job_risk_dist(base_duration):
     """This funtion will return the distribution instance of the risk for the job given the base duration.
