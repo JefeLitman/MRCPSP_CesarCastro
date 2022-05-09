@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.5.2
+Version: 1.6
 Job Dict Structure:
     {
         "id": Integer
@@ -103,7 +103,7 @@ def get_job_risk_dist(base_duration):
     """
     return stats.norm(loc=base_duration*0.5, scale=base_duration*0.5*0.2)
 
-def get_job_risks(risks_per_job, base_duration): #Aqui debo pedir el random_generator que sera el uniforme
+def get_job_risks(risks_per_job, base_duration, random_generator):
     """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
     {
         "risk_1": Float,
@@ -113,10 +113,11 @@ def get_job_risks(risks_per_job, base_duration): #Aqui debo pedir el random_gene
     Args:
         risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
         base_duration (Integer): A value specifying the duration to apply risks.
+        random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
     """
     risks = {}
     dist = get_job_risk_dist(base_duration)
-    prob = lambda: dist.cdf(dist.rvs())
+    prob = lambda: random_generator.cdf(random_generator.rvs())
     for i, p in enumerate(risks_per_job):
         risk = "risk_{}".format(i+1)
         if prob() < p:
