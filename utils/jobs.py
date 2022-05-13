@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.7
+Version: 1.7.1
 Job Dict Structure:
     {
         "id": Integer
@@ -101,7 +101,7 @@ def get_total_job_duration(job):
         if key.startswith("risk_"):
             if job[key] != None:
                 risks += job[key]
-    return np.rint(new_base_duration + risks)
+    return int(np.rint(new_base_duration + risks))
 
 def get_job_risk_dist(base_duration):
     """This funtion will return the distribution instance of the risk for the job given the base duration.
