@@ -1,6 +1,6 @@
 """This file is the principal and only file that must be executed to run the program. This project contain the logic to solve with an Genetic Algorithm the MRCPSP problem. In this file is where you can edit all the hyperparameters to the algorithm to make the execution. Some other parameters as optimization rules can be edited in the schedule.py file.
 Created by: Edgar RP
-Version: 1.2.2
+Version: 1.2.3
 """
 
 import time
@@ -13,7 +13,7 @@ from utils.data_loader import load_project
 
 random_seed = None
 results_folder = "./results"
-experiment_name = "j301_2"
+experiment_name = "test"
 project = load_project("./data/j301_2")
 if not random_seed:
     np.random.seed(project["init_random_value"])
@@ -24,7 +24,6 @@ n_jobs_with_risks = 10
 risks_per_job = (0.5, 0.4, 0.3)
 n_scenarios_per_solution = 10
 n_scenarios_final = 100
-tolerance_x_invalid_schedule = 10
 poblation_size = 10
 n_winners_x_generation = 4
 parents_prob_range = (0.8, 0.2)
@@ -45,8 +44,7 @@ if __name__ == "__main__":
                 n_winners_x_generation,
                 n_jobs_with_risks,
                 risks_per_job,
-                n_scenarios_per_solution,
-                tolerance_x_invalid_schedule,
+                n_scenarios_per_solution
             )
         else:
             gen_alg.evolve_poblation(parents_prob_range, n_cross_points, n_mutations, random_generator)
