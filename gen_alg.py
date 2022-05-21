@@ -1,11 +1,10 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.4
+Version: 1.5
 """
 
 import numpy as np
 import utils.jobs as uj
-from copy import copy
 from solution import Solution
 
 class Genetic_Algorithm():
@@ -110,14 +109,16 @@ class Genetic_Algorithm():
                     is_none = is_none and risks[r] == None
                     for job_mode in uj.get_job_modes_duration(jobs, job_id):
                         job_key = "{}.{}".format(job_id, job_mode)
-                        if is_none:
+                        if risks[r] == None:
                             self.jobs[job_key][r] = None 
                         else:
                             if job_key == job_str:
                                 self.jobs[job_key][r] = risks[r]
                             else:
                                 self.jobs[job_key][r] = uj.get_job_risk_dist(
-                                    self.jobs[job_key]["base_duration"]
+                                    self.jobs[job_key]["base_duration"],
+                                    risks_per[int(r.split("_")[1]) - 1][1],
+                                    risks_per[int(r.split("_")[1]) - 1][2]
                                 ).rvs()
 
                 if not is_none:
@@ -126,10 +127,9 @@ class Genetic_Algorithm():
         # Let the remaining jobs with risks as None value
         for job_str in self.jobs:
             job_id = int(job_str.split(".")[0])
-            if job_id not in [self.initial_job, self.final_job] + jobs_modified:
+            if job_id not in jobs_modified:
                 risks = uj.get_job_risks(np.zeros_like(risks_per), 0, random_generator)
                 for r in risks:
-                    #self.jobs[job_str]["used_for_risks"] = False
                     self.jobs[job_str][r] = risks[r]
 
     def evolve_poblation(self, prob_ranges, n_cross_points, n_mutations, random_generator):
@@ -234,7 +234,7 @@ class Genetic_Algorithm():
             mutations (Int): An integer indicating how many mutation tries must be executed by every job per solution. The mutations will be only to change the mode of the job.
             random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
         """
-        mutated_exec_line = copy(exec_line)
+        mutated_exec_line = list(exec_line)
         prob = lambda: random_generator.cdf(random_generator.rvs())
         for i, job_string in enumerate(exec_line):
             job_id, _ = [int(i) for i in job_string.split('.')]
