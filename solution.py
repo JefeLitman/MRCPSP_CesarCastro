@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 1.3
+Version: 1.3.1
 """
 
 import numpy as np
@@ -19,7 +19,7 @@ class Solution():
             initial_job (Int): Integer indicating the id of the initial job of the project.
             final_job (Int): Integer indicating the id of the final job of the project.
         """
-        self.job_params = self.__format_job_params__(job_params)
+        self.job_params = self.__format_job_params__(dict(job_params))
         self.n_scenarios = n_scenarios_sol
         self.initial_job = initial_job
         self.final_job = final_job
