@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line, time line and duration of jobs to do.
 Created by: Edgar RP
-Version: 1.5
+Version: 1.5.1
 """
 
 import numpy as np
@@ -54,10 +54,11 @@ class Schedule():
             if job_str not in self.job_order:
                 self.job_order.append(job_str)
 
-    def build_schedule(self, execution_line = None):
+    def build_schedule(self, execution_line = None, job_durations = None):
         """This function build the execution, timeline and job durations for the schedule using the job_order in the object. This function is a.k.a the sequentiator for the solution. It returns nothing but set the timeline, execution line and job durations for the schedule where the execution line contain the order from beginning to end of every job with its mode formmated like <job_id>.<mode> in a list, the timeline is also a list in the same order as execution line containing the start time for every job and job durations is a list in the same order containing the duration for that job.
         Args:
             execution_line (List[Tuples]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed. If this parameter is given then the to_do jobs uses this list to rebuild the time_line and job duration variables.
+            job_durations (List[Int]): A optional List parameter of Integers with the same order as execution_line containing the duration for every job. If this parameter is given then for every programmed job there won't be any new total duration calculation.
         """
         #First it must be executed the initial job
         done = [(self.initial_job, 1, 0, 0)] # (job_id, job_mode, start_tick, job_duration)
