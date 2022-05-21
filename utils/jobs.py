@@ -1,6 +1,6 @@
 """This file contains code to process the jobs dictionary in the project and schedule objects.
 Created by: Edgar RP
-Version: 1.7.1
+Version: 1.8
 Job Dict Structure:
     {
         "id": Integer
@@ -103,12 +103,14 @@ def get_total_job_duration(job):
                 risks += job[key]
     return int(np.rint(new_base_duration + risks))
 
-def get_job_risk_dist(base_duration):
+def get_job_risk_dist(base_duration, mean_percentage, std_percentage):
     """This funtion will return the distribution instance of the risk for the job given the base duration.
     Args:
         base_duration (Integer): A value specifying the duration to calculate the distribution risk.
+        mean_percentage (Float): The percentange value between 0 and 1 that tells how much percentage of the base duration will be used as mean for the normal distribution.
+        std_percentage (Float): The percentange value between 0 and 1 that tells how much percentage of the base duration will be used as standard deviation for the normal distribution.
     """
-    return stats.norm(loc=base_duration*0.5, scale=base_duration*0.5*0.2)
+    return stats.norm(loc=base_duration*mean_percentage, scale=base_duration*std_percentage)
 
 def get_job_risks(risks_per_job, base_duration, random_generator):
     """This function will return a dictionary with the risk percentages and the new duration of the task with the risk applied. The dict will have the following structure:
@@ -118,16 +120,16 @@ def get_job_risks(risks_per_job, base_duration, random_generator):
         ...
     }
     Args:
-        risks_per_job (Tuple): Tuple of the percentages of happening that risk and its length is the quantity of risks.
+        risks_per_job (List[Tuple]): A list with Tuples with elements: (Probability of ocurring the risk, Percentage of the duration to use as mean of distribution, Percentage of the duration to use as standard deviation of distribution) and its length is the quantity of risks.
         base_duration (Integer): A value specifying the duration to apply risks.
         random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
     """
     risks = {}
-    dist = get_job_risk_dist(base_duration)
     prob = lambda: random_generator.cdf(random_generator.rvs())
     for i, p in enumerate(risks_per_job):
+        dist = get_job_risk_dist(base_duration, p[1], p[2])
         risk = "risk_{}".format(i+1)
-        if prob() < p:
+        if prob() < p[0]:
             risks[risk] = dist.rvs()
         else:
             risks[risk] = None
