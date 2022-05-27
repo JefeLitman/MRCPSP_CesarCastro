@@ -1,6 +1,6 @@
 """This file contain the class that structure a solution for the project and estimates the base line, makespan and solution metrics as robust and quality of solution.
 Created by: Edgar RP
-Version: 1.3.1
+Version: 1.4
 """
 
 import numpy as np
@@ -51,34 +51,26 @@ class Solution():
         for _ in range(total):
             self.scenarios.append(Schedule(project, job_params, base_line = self.base_line))
 
-    def set_baseline(self, project, random_generator,  base_line = None):
+    def set_baseline(self, project, random_generator,  exec_line = None):
         """This method set the base_line, scenarios, makespan and others in the object using the project data, job parameters and optionally the execution line to create the base_line.
         Args:
             project (Dict): Dictionary containing all the parameters for the project.
             random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
-            base_line (Schedule): An instance of a Schedule object, which is optional if the new schedule to create must be similar to the base line.
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
         """
-        if base_line == None:
+        if exec_line == None:
             self.base_line = Schedule(project, self.job_params, random_generator, self.initial_job, self.final_job)
         else:
-            self.base_line = Schedule(project, self.job_params, base_line = base_line)
+            self.base_line.build_schedule(execution_line = exec_line)
         self.make_scenarios(project, self.job_params)
-        self.__set_metrics__()
+        self.set_metrics()
 
-    def __set_metrics__(self):
+    def set_metrics(self):
         """This function set the basic metrics for the solution like the value, mean, std  of makespan, the solution robustness and solution quality. It doesn't return nothing."""
         self.makespan = self.base_line.time_line[-1]
-        makespans = [i.time_line[-1] for i in self.scenarios] + [self.makespan]
+        makespans = [i.time_line[-1] for i in self.scenarios]
         self.mean_makespan = np.mean(makespans)
         self.std_makespan = np.std(makespans)
-        self.robustness = um.get_solution_robustness(self.base_line, self.scenarios)
+        self.solution = um.get_solution_robustness(self.base_line, self.scenarios)
         self.quality = um.get_quality_robustness(self.base_line, self.scenarios)
-
-    def set_job_order(self, job_order):
-        """This function set the new job order for the base line and re do the schedule structure for base line object. It doesn't return anything but instead reset the job order and builds the new schedule for the base line obtaining new execution line, timeline and job_durations.
-        Args:
-            job_order (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be added from parent.
-        """
-        self.base_line.job_order = job_order
-        self.base_line.build_schedule()
  
