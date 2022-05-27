@@ -1,6 +1,6 @@
 """This file contains code to calculate the metrics for solutions in the MRCPSP problem.
 Created by: Edgar RP
-Version: 1.3
+Version: 1.4
 """
 
 import numpy as np
@@ -22,11 +22,14 @@ def get_solution_robustness(base_line, scenarios):
         scenarios (List[Schedule]): A list of instances of the class schedule that must contain the exact same execution_line but different time_line of the base_line.
     """
     __check_similirity__(base_line, scenarios)
-    SR_jobs = np.zeros_like(base_line.time_line) # Corregir esto porque el execution line no es igual
-    base_times = np.r_[base_line.time_line]
+    get_sorted_times = lambda sol: np.r_[sorted(
+        np.stack([sol.execution_line, sol.time_line]).T,
+        key = lambda x: int(x[0].split(".")[0])
+    )][:,1].astype(np.int32)
+    SR_jobs = np.zeros_like(base_line.time_line)
+    base_times = get_sorted_times(base_line)
     for sc in scenarios:
-        SR_jobs += np.abs(base_times -  sc.time_line)
-
+        SR_jobs += np.abs(base_times - get_sorted_times(sc))
     return np.sum(SR_jobs / len(scenarios))
 
 def get_quality_robustness(base_line, scenarios):
