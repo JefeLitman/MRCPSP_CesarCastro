@@ -1,6 +1,6 @@
 """This file contain the class that structure a schedule for the solution and generate the execution line, time line and duration of jobs to do.
 Created by: Edgar RP
-Version: 1.5.1
+Version: 1.6
 """
 
 import numpy as np
@@ -33,11 +33,12 @@ class Schedule():
             self.initial_job = initial_job
             self.final_job = final_job
             self.__shuffle_jobs__(job_params, random_generator)
+            self.build_schedule()
         else:
             self.initial_job = base_line.initial_job
             self.final_job = base_line.final_job
             self.job_order = base_line.job_order
-        self.build_schedule()
+            self.build_schedule(execution_line = base_line.execution_line)
 
     def __shuffle_jobs__(self, job_params, random_generator):
         """This function shuffle the available jobs excepting the initial and final job for schedules created without an base schedule given. It doesn't return nothing but instead set the variable job_order.
@@ -60,6 +61,13 @@ class Schedule():
             execution_line (List[Tuples]): A optional List parameter of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed. If this parameter is given then the to_do jobs uses this list to rebuild the time_line and job duration variables.
             job_durations (List[Int]): A optional List parameter of Integers with the same order as execution_line containing the duration for every job. If this parameter is given then for every programmed job there won't be any new total duration calculation.
         """
+        if job_durations != None:
+            if execution_line == None:
+                raise AssertionError("You can't build a schedule without an excution line given the job_durations, please be sure that you are given the two parameters")
+            exec_4_duration_sorted =  np.r_[sorted(
+                np.stack([execution_line, job_durations]).T,
+                key = lambda x: int(x[0].split(".")[0])
+            )][:,1].astype(np.int32)
         #First it must be executed the initial job
         done = [(self.initial_job, 1, 0, 0)] # (job_id, job_mode, start_tick, job_duration)
         doing = [] # (job_id, job_mode, start_tick, job_duration)
@@ -86,7 +94,10 @@ class Schedule():
                 if job["id"] not in [i[0] for i in doing] or job["id"] not in [i["id"] for i in to_delete]:
                     if self.__is_feasible__(job):
                         to_delete.append(job)
-                        job_duration = uj.get_total_job_duration(job)
+                        if job_durations != None:
+                            job_duration = exec_4_duration_sorted[job["id"] - 1]
+                        else:
+                            job_duration = uj.get_total_job_duration(job)
                         doing.append((job["id"], job["mode"], tick, job_duration))
                         self.renewable_resources_use += job["renewable_resources_use"]
                         self.nonrenewable_resources_use += job["nonrenewable_resources_use"]
