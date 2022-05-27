@@ -1,6 +1,6 @@
 """This file contain the class that execute and do the genetic algorithm of the given project with mutation, crossover and other methods neccessary.
 Created by: Edgar RP
-Version: 1.5
+Version: 1.6
 """
 
 import numpy as np
@@ -159,32 +159,29 @@ class Genetic_Algorithm():
                     if random_value >= probabilities[i]:                        
                         parents.append(winners[i])
                         break
-            job_order_son = self.crossover_solutions(
-                parents[0], 
-                parents[1], 
+            exec_line_son = self.crossover_solutions(
+                parents[0].base_line.execution_line, 
+                parents[1].base_line.execution_line, 
                 n_cross_points, 
                 random_generator
             )
-            self.solutions[index].set_job_order(job_order_son)
 
-            exec_line_son = self.mutate_solution(self.solutions[index].execution_line, n_mutations, random_generator)
-            self.solutions[index].base_line.build_schedule(exec_line_son)
-
-            self.solutions[index].set_baseline(self.project, self.jobs, self.solutions[index].base_line)
+            exec_line_son = self.mutate_solution(exec_line_son, n_mutations, random_generator)
+            self.solutions[index].set_baseline(self.project, self.jobs, exec_line_son)
 
         # After all children were created, then re sort the poblation
         self.__sort_poblation__()
 
-    def crossover_solutions(self, base_line_0, base_line_1, n_points, random_generator):
-        """This function is in order to create a new job order based on the two base lines given. It return the new job order.
+    def crossover_solutions(self, exec_line_0, exec_line_1, n_points, random_generator):
+        """This function is in order to create a new execution line based on the two execution lines given. It return the new execution line.
         Args:
-            base_line_0 (Schedule): An instance of a Schedule object, which is optional if the new schedule to create must be similar to the base line.
-            base_line_1 (Schedule): An instance of a Schedule object, which is optional if the new schedule to create must be similar to the base line.
+            exec_line_0 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
+            exec_line_1 (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
             n_points (Int): An integer indicating how many points will be taking to make the crossover operation.
             random_generator (scipy.stats.<distribution>): Instance of scipy.stats.<distribution> object to generate random values of the normal distribution.
         """
-        assert len(base_line_0.job_order) == len(base_line_1.job_order) and len(base_line_0.job_order) > len(self.jobs)
-        n_jobs = len(self.jobs)
+        assert len(exec_line_0) == len(exec_line_1) and len(exec_line_0) > 3
+        n_jobs = len(exec_line_1)
         assert n_points < int(n_jobs / 2) and n_points > 0
         prob = lambda: random_generator.cdf(random_generator.rvs())
         crossover_points = [(0, int(prob()*2))] # List of tuples with (start_index, parent)
@@ -198,34 +195,35 @@ class Genetic_Algorithm():
                     crossover_points.append((index, next_parent))
         crossover_points += [(n_jobs - 1, None)]
         
-        job_order = []
-        for i in range(len(crossover_points)):
+        exec_line = []
+        for i in range(len(crossover_points) - 1):
             start_point, parent_index = crossover_points[i]
             end_point, _ = crossover_points[i + 1]
-            parent = locals()["base_line_{}".format(parent_index)].job_order
-            self.__add_no_repeated_jobs__(job_order, parent, start_point, end_point - start_point)
+            parent = locals()["exec_line_{}".format(parent_index)]
+            self.__add_no_repeated_jobs__(exec_line, parent, start_point, end_point - start_point)
 
-        assert len(job_order) == n_jobs
-        return job_order
+        exec_line.append(parent[-1]) # Add at the end the last fictional job
+        assert len(exec_line) == n_jobs
+        return exec_line
 
-    def __add_no_repeated_jobs__(self, job_order, parent_job_order, start_index, n_add):
-        """This function add the quantity of end_index - start_jobs in the job order using all the jobs in the parent until the quantity of jobs is accomplished. It return None but modify the job_order element
+    def __add_no_repeated_jobs__(self, exec_line, parent, start_index, n_add):
+        """This function add the quantity of end_index - start_jobs in the exec line using all the jobs in the parent until the quantity of jobs is accomplished. It return None but modify the exec_line element
         Args:
-            job_order (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be added from parent.
-            parent_job_order (List[Str]): A List of strings from the parent in the format "<job_id>.<job_mode>" that contain the order in which every job will be taking into account in the sequentiator.
+            exec_line (List[Str]): A List of strings in the format "<job_id>.<job_mode>" that contain the order in which every job will be added from parent.
+            parent (List[Str]): A List of strings from the parent in the format "<job_id>.<job_mode>" that contain the order in which every job will be executed.
             start_index (Int): An integer indicating the index in which the parent jobs will start to add.
             n_add (Int): An integer indicating how many jobs will be added from the parent to exec_line.
         """
-        jobs = [int(job_string.split('.')[0]) for job_string in job_order]
+        jobs = [int(job_string.split('.')[0]) for job_string in exec_line]
         jobs_to_add = []
         index = start_index
         while len(jobs_to_add) < n_add:
-            job_id, _ = [int(i) for i in parent_job_order[index].split('.')]
+            job_id, _ = [int(i) for i in parent[index].split('.')]
             if job_id not in jobs:
-                jobs_to_add.append(parent_job_order[index])
+                jobs_to_add.append(parent[index])
                 jobs.append(job_id)
-            index = (index + 1) % (len(parent_job_order) - 1) # Exclude the last job 
-        job_order += jobs_to_add
+            index = (index + 1) % (len(parent) - 1) # Exclude the last job 
+        exec_line += jobs_to_add
 
     def mutate_solution(self, exec_line, mutations, random_generator):
         """This function alters each job in the execution line (ignoring the first and last) changing its modes by a random probability in each job. It return the new mutated execution line.
